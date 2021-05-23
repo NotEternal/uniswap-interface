@@ -1,11 +1,12 @@
-import { ChainId, Pair, Token } from '@uniswap/sdk'
+import { Percent, Token } from '@uniswap/sdk-core'
+import { Pair } from '@uniswap/v2-sdk'
+import JSBI from 'jsbi'
 import flatMap from 'lodash.flatmap'
-import ReactGA from 'react-ga'
 import { useCallback, useMemo } from 'react'
 import { shallowEqual, useDispatch, useSelector } from 'react-redux'
-import { BASES_TO_TRACK_LIQUIDITY_FOR, PINNED_PAIRS } from '../../constants'
+import { BASES_TO_TRACK_LIQUIDITY_FOR, PINNED_PAIRS } from '../../constants/routing'
 
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { useAllTokens } from '../../hooks/Tokens'
 import { AppDispatch, AppState } from '../index'
 import {
@@ -14,12 +15,13 @@ import {
   removeSerializedToken,
   SerializedPair,
   SerializedToken,
+  toggleURLWarning,
   updateUserDarkMode,
   updateUserDeadline,
+  updateHideClosedPositions,
   updateUserExpertMode,
+  updateUserSingleHopOnly,
   updateUserSlippageTolerance,
-  toggleURLWarning,
-  updateUserSingleHopOnly
 } from './actions'
 
 function serializeToken(token: Token): SerializedToken {
@@ -28,7 +30,7 @@ function serializeToken(token: Token): SerializedToken {
     address: token.address,
     decimals: token.decimals,
     symbol: token.symbol,
-    name: token.name
+    name: token.name,
   }
 }
 
@@ -49,7 +51,7 @@ export function useIsDarkMode(): boolean {
   >(
     ({ user: { matchesDarkMode, userDarkMode } }) => ({
       userDarkMode,
-      matchesDarkMode
+      matchesDarkMode,
     }),
     shallowEqual
   )
@@ -69,7 +71,7 @@ export function useDarkModeManager(): [boolean, () => void] {
 }
 
 export function useIsExpertMode(): boolean {
-  return useSelector<AppState, AppState['user']['userExpertMode']>(state => state.user.userExpertMode)
+  return useSelector<AppState, AppState['user']['userExpertMode']>((state) => state.user.userExpertMode)
 }
 
 export function useExpertModeManager(): [boolean, () => void] {
@@ -87,15 +89,11 @@ export function useUserSingleHopOnly(): [boolean, (newSingleHopOnly: boolean) =>
   const dispatch = useDispatch<AppDispatch>()
 
   const singleHopOnly = useSelector<AppState, AppState['user']['userSingleHopOnly']>(
-    state => state.user.userSingleHopOnly
+    (state) => state.user.userSingleHopOnly
   )
 
   const setSingleHopOnly = useCallback(
     (newSingleHopOnly: boolean) => {
-      ReactGA.event({
-        category: 'Routing',
-        action: newSingleHopOnly ? 'enable single hop' : 'disable single hop'
-      })
       dispatch(updateUserSingleHopOnly({ userSingleHopOnly: newSingleHopOnly }))
     },
     [dispatch]
@@ -104,25 +102,74 @@ export function useUserSingleHopOnly(): [boolean, (newSingleHopOnly: boolean) =>
   return [singleHopOnly, setSingleHopOnly]
 }
 
-export function useUserSlippageTolerance(): [number, (slippage: number) => void] {
+export function useSetUserSlippageTolerance(): (slippageTolerance: Percent | 'auto') => void {
   const dispatch = useDispatch<AppDispatch>()
-  const userSlippageTolerance = useSelector<AppState, AppState['user']['userSlippageTolerance']>(state => {
+
+  return useCallback(
+    (userSlippageTolerance: Percent | 'auto') => {
+      let value: 'auto' | number
+      try {
+        value =
+          userSlippageTolerance === 'auto' ? 'auto' : JSBI.toNumber(userSlippageTolerance.multiply(10_000).quotient)
+      } catch (error) {
+        value = 'auto'
+      }
+      dispatch(
+        updateUserSlippageTolerance({
+          userSlippageTolerance: value,
+        })
+      )
+    },
+    [dispatch]
+  )
+}
+
+/**
+ * Return the user's slippage tolerance, from the redux store, and a function to update the slippage tolerance
+ */
+export function useUserSlippageTolerance(): Percent | 'auto' {
+  const userSlippageTolerance = useSelector<AppState, AppState['user']['userSlippageTolerance']>((state) => {
     return state.user.userSlippageTolerance
   })
 
-  const setUserSlippageTolerance = useCallback(
-    (userSlippageTolerance: number) => {
-      dispatch(updateUserSlippageTolerance({ userSlippageTolerance }))
+  return useMemo(
+    () => (userSlippageTolerance === 'auto' ? 'auto' : new Percent(userSlippageTolerance, 10_000)),
+    [userSlippageTolerance]
+  )
+}
+
+export function useUserHideClosedPositions(): [boolean, (newHideClosedPositions: boolean) => void] {
+  const dispatch = useDispatch<AppDispatch>()
+
+  const hideClosedPositions = useSelector<AppState, AppState['user']['userHideClosedPositions']>(
+    (state) => state.user.userHideClosedPositions
+  )
+
+  const setHideClosedPositions = useCallback(
+    (newHideClosedPositions: boolean) => {
+      dispatch(updateHideClosedPositions({ userHideClosedPositions: newHideClosedPositions }))
     },
     [dispatch]
   )
 
-  return [userSlippageTolerance, setUserSlippageTolerance]
+  return [hideClosedPositions, setHideClosedPositions]
+}
+
+/**
+ * Same as above but replaces the auto with a default value
+ * @param defaultSlippageTolerance the default value to replace auto with
+ */
+export function useUserSlippageToleranceWithDefault(defaultSlippageTolerance: Percent): Percent {
+  const allowedSlippage = useUserSlippageTolerance()
+  return useMemo(
+    () => (allowedSlippage === 'auto' ? defaultSlippageTolerance : allowedSlippage),
+    [allowedSlippage, defaultSlippageTolerance]
+  )
 }
 
 export function useUserTransactionTTL(): [number, (slippage: number) => void] {
   const dispatch = useDispatch<AppDispatch>()
-  const userDeadline = useSelector<AppState, AppState['user']['userDeadline']>(state => {
+  const userDeadline = useSelector<AppState, AppState['user']['userDeadline']>((state) => {
     return state.user.userDeadline
   })
 
@@ -162,14 +209,14 @@ export function useUserAddedTokens(): Token[] {
 
   return useMemo(() => {
     if (!chainId) return []
-    return Object.values(serializedTokensMap?.[chainId as ChainId] ?? {}).map(deserializeToken)
+    return Object.values(serializedTokensMap?.[chainId] ?? {}).map(deserializeToken)
   }, [serializedTokensMap, chainId])
 }
 
 function serializePair(pair: Pair): SerializedPair {
   return {
     token0: serializeToken(pair.token0),
-    token1: serializeToken(pair.token1)
+    token1: serializeToken(pair.token1),
   }
 }
 
@@ -216,14 +263,14 @@ export function useTrackedTokenPairs(): [Token, Token][] {
   const generatedPairs: [Token, Token][] = useMemo(
     () =>
       chainId
-        ? flatMap(Object.keys(tokens), tokenAddress => {
+        ? flatMap(Object.keys(tokens), (tokenAddress) => {
             const token = tokens[tokenAddress]
             // for each token on the current chain,
             return (
               // loop though all bases on the current chain
               (BASES_TO_TRACK_LIQUIDITY_FOR[chainId] ?? [])
                 // to construct pairs of the given token with each base
-                .map(base => {
+                .map((base) => {
                   if (base.address === token.address) {
                     return null
                   } else {
@@ -245,16 +292,15 @@ export function useTrackedTokenPairs(): [Token, Token][] {
     const forChain = savedSerializedPairs[chainId]
     if (!forChain) return []
 
-    return Object.keys(forChain).map(pairId => {
+    return Object.keys(forChain).map((pairId) => {
       return [deserializeToken(forChain[pairId].token0), deserializeToken(forChain[pairId].token1)]
     })
   }, [savedSerializedPairs, chainId])
 
-  const combinedList = useMemo(() => userPairs.concat(generatedPairs).concat(pinnedPairs), [
-    generatedPairs,
-    pinnedPairs,
-    userPairs
-  ])
+  const combinedList = useMemo(
+    () => userPairs.concat(generatedPairs).concat(pinnedPairs),
+    [generatedPairs, pinnedPairs, userPairs]
+  )
 
   return useMemo(() => {
     // dedupes pairs of tokens in the combined list
@@ -266,6 +312,6 @@ export function useTrackedTokenPairs(): [Token, Token][] {
       return memo
     }, {})
 
-    return Object.keys(keyed).map(key => keyed[key])
+    return Object.keys(keyed).map((key) => keyed[key])
   }, [combinedList])
 }

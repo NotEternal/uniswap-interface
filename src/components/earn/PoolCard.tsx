@@ -1,20 +1,21 @@
 import React from 'react'
 import { AutoColumn } from '../Column'
 import { RowBetween } from '../Row'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import { TYPE, StyledInternalLink } from '../../theme'
 import DoubleCurrencyLogo from '../DoubleLogo'
-import { ETHER, JSBI, TokenAmount } from '@uniswap/sdk'
+import { CurrencyAmount, Token } from '@uniswap/sdk-core'
+import JSBI from 'jsbi'
 import { ButtonPrimary } from '../Button'
 import { StakingInfo } from '../../state/stake/hooks'
 import { useColor } from '../../hooks/useColor'
 import { currencyId } from '../../utils/currencyId'
 import { Break, CardNoise, CardBGImage } from './styled'
-import { unwrappedToken } from '../../utils/wrappedCurrency'
-import { useTotalSupply } from '../../data/TotalSupply'
-import { usePair } from '../../data/Reserves'
-import useUSDCPrice from '../../utils/useUSDCPrice'
-import { BIG_INT_SECONDS_IN_WEEK } from '../../constants'
+import { unwrappedToken } from '../../utils/unwrappedToken'
+import { useTotalSupply } from '../../hooks/useTotalSupply'
+import { useV2Pair } from '../../hooks/useV2Pairs'
+import useUSDCPrice from '../../hooks/useUSDCPrice'
+import { BIG_INT_SECONDS_IN_WEEK } from '../../constants/misc'
 
 const StatContainer = styled.div`
   display: flex;
@@ -78,25 +79,25 @@ export default function PoolCard({ stakingInfo }: { stakingInfo: StakingInfo }) 
   const isStaking = Boolean(stakingInfo.stakedAmount.greaterThan('0'))
 
   // get the color of the token
-  const token = currency0 === ETHER ? token1 : token0
-  const WETH = currency0 === ETHER ? token0 : token1
+  const token = currency0.isNative ? token1 : token0
+  const WETH = currency0.isNative ? token0 : token1
   const backgroundColor = useColor(token)
 
-  const totalSupplyOfStakingToken = useTotalSupply(stakingInfo.stakedAmount.token)
-  const [, stakingTokenPair] = usePair(...stakingInfo.tokens)
+  const totalSupplyOfStakingToken = useTotalSupply(stakingInfo.stakedAmount.currency)
+  const [, stakingTokenPair] = useV2Pair(...stakingInfo.tokens)
 
   // let returnOverMonth: Percent = new Percent('0')
-  let valueOfTotalStakedAmountInWETH: TokenAmount | undefined
+  let valueOfTotalStakedAmountInWETH: CurrencyAmount<Token> | undefined
   if (totalSupplyOfStakingToken && stakingTokenPair) {
     // take the total amount of LP tokens staked, multiply by ETH value of all LP tokens, divide by all LP tokens
-    valueOfTotalStakedAmountInWETH = new TokenAmount(
+    valueOfTotalStakedAmountInWETH = CurrencyAmount.fromRawAmount(
       WETH,
       JSBI.divide(
         JSBI.multiply(
-          JSBI.multiply(stakingInfo.totalStakedAmount.raw, stakingTokenPair.reserveOf(WETH).raw),
+          JSBI.multiply(stakingInfo.totalStakedAmount.quotient, stakingTokenPair.reserveOf(WETH).quotient),
           JSBI.BigInt(2) // this is b/c the value of LP shares are ~double the value of the WETH they entitle owner to
         ),
-        totalSupplyOfStakingToken.raw
+        totalSupplyOfStakingToken.quotient
       )
     )
   }

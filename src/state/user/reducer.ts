@@ -1,4 +1,4 @@
-import { INITIAL_ALLOWED_SLIPPAGE, DEFAULT_DEADLINE_FROM_NOW } from '../../constants'
+import { DEFAULT_DEADLINE_FROM_NOW } from '../../constants/misc'
 import { createReducer } from '@reduxjs/toolkit'
 import { updateVersion } from '../global/actions'
 import {
@@ -14,7 +14,8 @@ import {
   updateUserSlippageTolerance,
   updateUserDeadline,
   toggleURLWarning,
-  updateUserSingleHopOnly
+  updateUserSingleHopOnly,
+  updateHideClosedPositions,
 } from './actions'
 
 const currentTimestamp = () => new Date().getTime()
@@ -30,8 +31,12 @@ export interface UserState {
 
   userSingleHopOnly: boolean // only allow swaps on direct pairs
 
+  // hides closed (inactive) positions across the app
+  userHideClosedPositions: boolean
+
   // user defined slippage tolerance in bips, used in all txns
-  userSlippageTolerance: number
+  userSlippageTolerance: number | 'auto'
+  userSlippageToleranceHasBeenMigratedToAuto: boolean // temporary flag for migration status
 
   // deadline set by user in minutes, used in all txns
   userDeadline: number
@@ -62,26 +67,46 @@ export const initialState: UserState = {
   matchesDarkMode: false,
   userExpertMode: false,
   userSingleHopOnly: false,
-  userSlippageTolerance: INITIAL_ALLOWED_SLIPPAGE,
+  userHideClosedPositions: false,
+  userSlippageTolerance: 'auto',
+  userSlippageToleranceHasBeenMigratedToAuto: true,
   userDeadline: DEFAULT_DEADLINE_FROM_NOW,
   tokens: {},
   pairs: {},
   timestamp: currentTimestamp(),
-  URLWarningVisible: true
+  URLWarningVisible: true,
 }
 
-export default createReducer(initialState, builder =>
+export default createReducer(initialState, (builder) =>
   builder
-    .addCase(updateVersion, state => {
+    .addCase(updateVersion, (state) => {
       // slippage isnt being tracked in local storage, reset to default
       // noinspection SuspiciousTypeOfGuard
-      if (typeof state.userSlippageTolerance !== 'number') {
-        state.userSlippageTolerance = INITIAL_ALLOWED_SLIPPAGE
+      if (
+        typeof state.userSlippageTolerance !== 'number' ||
+        !Number.isInteger(state.userSlippageTolerance) ||
+        state.userSlippageTolerance < 0 ||
+        state.userSlippageTolerance > 5000
+      ) {
+        state.userSlippageTolerance = 'auto'
+      } else {
+        if (
+          !state.userSlippageToleranceHasBeenMigratedToAuto &&
+          [10, 50, 100].indexOf(state.userSlippageTolerance) !== -1
+        ) {
+          state.userSlippageTolerance = 'auto'
+          state.userSlippageToleranceHasBeenMigratedToAuto = true
+        }
       }
 
       // deadline isnt being tracked in local storage, reset to default
       // noinspection SuspiciousTypeOfGuard
-      if (typeof state.userDeadline !== 'number') {
+      if (
+        typeof state.userDeadline !== 'number' ||
+        !Number.isInteger(state.userDeadline) ||
+        state.userDeadline < 60 ||
+        state.userDeadline > 180 * 60
+      ) {
         state.userDeadline = DEFAULT_DEADLINE_FROM_NOW
       }
 
@@ -109,6 +134,9 @@ export default createReducer(initialState, builder =>
     })
     .addCase(updateUserSingleHopOnly, (state, action) => {
       state.userSingleHopOnly = action.payload.userSingleHopOnly
+    })
+    .addCase(updateHideClosedPositions, (state, action) => {
+      state.userHideClosedPositions = action.payload.userHideClosedPositions
     })
     .addCase(addSerializedToken, (state, { payload: { serializedToken } }) => {
       if (!state.tokens) {
@@ -145,7 +173,7 @@ export default createReducer(initialState, builder =>
       }
       state.timestamp = currentTimestamp()
     })
-    .addCase(toggleURLWarning, state => {
+    .addCase(toggleURLWarning, (state) => {
       state.URLWarningVisible = !state.URLWarningVisible
     })
 )

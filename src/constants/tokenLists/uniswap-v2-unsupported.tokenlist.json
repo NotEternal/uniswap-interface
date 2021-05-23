@@ -1,5 +1,5 @@
 {
-  "name": "Uniswap V2 Unsupported List",
+  "name": "Unsupported Tokens",
   "timestamp": "2021-01-05T20:47:02.923Z",
   "version": {
     "major": 1,
@@ -15,6 +15,14 @@
       "address": "0x4922a015c4407F87432B179bb209e125432E4a2A",
       "symbol": "XAUt",
       "decimals": 6,
+      "chainId": 1,
+      "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x4922a015c4407F87432B179bb209e125432E4a2A/logo.png"
+    },
+    {
+      "name": "Grump Cat",
+      "address": "0x93B2FfF814FCaEFFB01406e80B4Ecd89Ca6A021b",
+      "symbol": "GRUMPY",
+      "decimals": 9,
       "chainId": 1,
       "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x4922a015c4407F87432B179bb209e125432E4a2A/logo.png"
     }

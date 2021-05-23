@@ -1,16 +1,16 @@
-import { TokenAmount } from '@uniswap/sdk'
+import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 import React, { useEffect } from 'react'
 import { X } from 'react-feather'
 import styled, { keyframes } from 'styled-components'
 import tokenLogo from '../../assets/images/token-logo.png'
 import { ButtonPrimary } from '../../components/Button'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { ApplicationModal } from '../../state/application/actions'
 import {
   useModalOpen,
   useShowClaimPopup,
   useToggleSelfClaimModal,
-  useToggleShowClaimPopup
+  useToggleShowClaimPopup,
 } from '../../state/application/hooks'
 
 import { useUserHasAvailableClaim, useUserUnclaimedAmount } from '../../state/claim/hooks'
@@ -65,7 +65,7 @@ export default function ClaimPopup() {
 
   // const userHasAvailableclaim = useUserHasAvailableClaim()
   const userHasAvailableclaim: boolean = useUserHasAvailableClaim(account)
-  const unclaimedAmount: TokenAmount | undefined = useUserUnclaimedAmount(account)
+  const unclaimedAmount: CurrencyAmount<Token> | undefined = useUserUnclaimedAmount(account)
 
   // listen for available claim and show popup if needed
   useEffect(() => {

@@ -1,11 +1,11 @@
-import { Currency, ETHER, Token } from '@uniswap/sdk'
+import { Currency, Ether, Token } from '@uniswap/sdk-core'
 import React, { KeyboardEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactGA from 'react-ga'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList } from 'react-window'
 import { Text } from 'rebass'
-import { useActiveWeb3React } from '../../hooks'
-import { useAllTokens, useToken, useIsUserAddedToken, useFoundOnInactiveList } from '../../hooks/Tokens'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { useAllTokens, useToken, useIsUserAddedToken, useSearchInactiveTokenLists } from '../../hooks/Tokens'
 import { CloseIcon, TYPE, ButtonText, IconWrapper } from '../../theme'
 import { isAddress } from '../../utils'
 import Column from '../Column'
@@ -16,7 +16,7 @@ import { filterTokens, useSortedTokensByQuery } from './filtering'
 import { useTokenComparator } from './sorting'
 import { PaddedColumn, SearchInput, Separator } from './styleds'
 import AutoSizer from 'react-virtualized-auto-sizer'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import useToggle from 'hooks/useToggle'
 import { useOnClickOutside } from 'hooks/useOnClickOutside'
 import useTheme from 'hooks/useTheme'
@@ -61,7 +61,7 @@ export function CurrencySearch({
   isOpen,
   showManageView,
   showImportView,
-  setImportToken
+  setImportToken,
 }: CurrencySearchProps) {
   const { t } = useTranslation()
   const { chainId } = useActiveWeb3React()
@@ -79,7 +79,9 @@ export function CurrencySearch({
 
   // if they input an address, use it
   const isAddressSearch = isAddress(debouncedQuery)
+
   const searchToken = useToken(debouncedQuery)
+
   const searchTokenIsAdded = useIsUserAddedToken(searchToken)
 
   useEffect(() => {
@@ -87,15 +89,10 @@ export function CurrencySearch({
       ReactGA.event({
         category: 'Currency Select',
         action: 'Search by address',
-        label: isAddressSearch
+        label: isAddressSearch,
       })
     }
   }, [isAddressSearch])
-
-  const showETH: boolean = useMemo(() => {
-    const s = debouncedQuery.toLowerCase().trim()
-    return s === '' || s === 'e' || s === 'et' || s === 'eth'
-  }, [debouncedQuery])
 
   const tokenComparator = useTokenComparator(invertSearchOrder)
 
@@ -108,6 +105,16 @@ export function CurrencySearch({
   }, [filteredTokens, tokenComparator])
 
   const filteredSortedTokens = useSortedTokensByQuery(sortedTokens, debouncedQuery)
+
+  const ether = useMemo(() => chainId && Ether.onChain(chainId), [chainId])
+
+  const filteredSortedTokensWithETH: Currency[] = useMemo(() => {
+    const s = debouncedQuery.toLowerCase().trim()
+    if (s === '' || s === 'e' || s === 'et' || s === 'eth') {
+      return ether ? [ether, ...filteredSortedTokens] : filteredSortedTokens
+    }
+    return filteredSortedTokens
+  }, [debouncedQuery, ether, filteredSortedTokens])
 
   const handleCurrencySelect = useCallback(
     (currency: Currency) => {
@@ -124,7 +131,7 @@ export function CurrencySearch({
 
   // manage focus on modal show
   const inputRef = useRef<HTMLInputElement>()
-  const handleInput = useCallback(event => {
+  const handleInput = useCallback((event) => {
     const input = event.target.value
     const checksummedInput = isAddress(input)
     setSearchQuery(checksummedInput || input)
@@ -135,19 +142,19 @@ export function CurrencySearch({
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         const s = debouncedQuery.toLowerCase().trim()
-        if (s === 'eth') {
-          handleCurrencySelect(ETHER)
-        } else if (filteredSortedTokens.length > 0) {
+        if (s === 'eth' && ether) {
+          handleCurrencySelect(ether)
+        } else if (filteredSortedTokensWithETH.length > 0) {
           if (
-            filteredSortedTokens[0].symbol?.toLowerCase() === debouncedQuery.trim().toLowerCase() ||
-            filteredSortedTokens.length === 1
+            filteredSortedTokensWithETH[0].symbol?.toLowerCase() === debouncedQuery.trim().toLowerCase() ||
+            filteredSortedTokensWithETH.length === 1
           ) {
-            handleCurrencySelect(filteredSortedTokens[0])
+            handleCurrencySelect(filteredSortedTokensWithETH[0])
           }
         }
       }
     },
-    [filteredSortedTokens, handleCurrencySelect, debouncedQuery]
+    [debouncedQuery, ether, filteredSortedTokensWithETH, handleCurrencySelect]
   )
 
   // menu ui
@@ -156,8 +163,9 @@ export function CurrencySearch({
   useOnClickOutside(node, open ? toggle : undefined)
 
   // if no results on main list, show option to expand into inactive
-  const inactiveTokens = useFoundOnInactiveList(debouncedQuery)
-  const filteredInactiveTokens: Token[] = useSortedTokensByQuery(inactiveTokens, debouncedQuery)
+  const filteredInactiveTokens = useSearchInactiveTokenLists(
+    filteredTokens.length === 0 || (debouncedQuery.length > 2 && !isAddressSearch) ? debouncedQuery : undefined
+  )
 
   return (
     <ContentWrapper>
@@ -195,11 +203,8 @@ export function CurrencySearch({
             {({ height }) => (
               <CurrencyList
                 height={height}
-                showETH={showETH}
-                currencies={
-                  filteredInactiveTokens ? filteredSortedTokens.concat(filteredInactiveTokens) : filteredSortedTokens
-                }
-                breakIndex={inactiveTokens && filteredSortedTokens ? filteredSortedTokens.length : undefined}
+                currencies={filteredSortedTokensWithETH}
+                otherListTokens={filteredInactiveTokens}
                 onCurrencySelect={handleCurrencySelect}
                 otherCurrency={otherSelectedCurrency}
                 selectedCurrency={selectedCurrency}
@@ -224,7 +229,7 @@ export function CurrencySearch({
               <IconWrapper size="16px" marginRight="6px">
                 <Edit />
               </IconWrapper>
-              <TYPE.main color={theme.blue1}>Manage</TYPE.main>
+              <TYPE.main color={theme.blue1}>Manage Token Lists</TYPE.main>
             </RowFixed>
           </ButtonText>
         </Row>

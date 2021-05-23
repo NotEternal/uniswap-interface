@@ -3,7 +3,7 @@ import React, { useCallback, useMemo } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch } from 'react-redux'
 import { Text } from 'rebass'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import { AppDispatch } from '../../state'
 import { useRemovePopup } from '../../state/application/hooks'
 import { acceptListUpdate } from '../../state/lists/actions'
@@ -23,7 +23,7 @@ export default function ListUpdatePopup({
   listUrl,
   oldList,
   newList,
-  auto
+  auto,
 }: {
   popKey: string
   listUrl: string
@@ -40,13 +40,17 @@ export default function ListUpdatePopup({
     ReactGA.event({
       category: 'Lists',
       action: 'Update List from Popup',
-      label: listUrl
+      label: listUrl,
     })
     dispatch(acceptListUpdate(listUrl))
     removeThisPopup()
   }, [auto, dispatch, listUrl, removeThisPopup])
 
-  const { added: tokensAdded, changed: tokensChanged, removed: tokensRemoved } = useMemo(() => {
+  const {
+    added: tokensAdded,
+    changed: tokensChanged,
+    removed: tokensRemoved,
+  } = useMemo(() => {
     return diffTokenLists(oldList.tokens, newList.tokens)
   }, [newList.tokens, oldList.tokens])
   const numTokensChanged = useMemo(

@@ -1,17 +1,18 @@
-import { JSBI, TokenAmount } from '@uniswap/sdk'
+import JSBI from 'jsbi'
+import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 import { isAddress } from 'ethers/lib/utils'
 import React, { useEffect, useState } from 'react'
 import { Text } from 'rebass'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import Circle from '../../assets/images/blue-loader.svg'
 import tokenLogo from '../../assets/images/token-logo.png'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { ApplicationModal } from '../../state/application/actions'
 import { useModalOpen, useToggleSelfClaimModal } from '../../state/application/hooks'
 import { useClaimCallback, useUserClaimData, useUserUnclaimedAmount } from '../../state/claim/hooks'
 import { useUserHasSubmittedClaim } from '../../state/transactions/hooks'
 import { CloseIcon, CustomLightSpinner, ExternalLink, TYPE, UniTokenAnimated } from '../../theme'
-import { getEtherscanLink } from '../../utils'
+import { ExplorerDataType, getExplorerLink } from '../../utils/getExplorerLink'
 import { ButtonPrimary } from '../Button'
 import { AutoColumn, ColumnCenter } from '../Column'
 import Confetti from '../Confetti'
@@ -59,7 +60,7 @@ export default function ClaimModal() {
 
   // monitor the status of the claim from contracts and txns
   const { claimCallback } = useClaimCallback(account)
-  const unclaimedAmount: TokenAmount | undefined = useUserUnclaimedAmount(account)
+  const unclaimedAmount: CurrencyAmount<Token> | undefined = useUserUnclaimedAmount(account)
   const { claimSubmitted, claimTxn } = useUserHasSubmittedClaim(account ?? undefined)
   const claimConfirmed = Boolean(claimTxn?.receipt)
 
@@ -67,7 +68,7 @@ export default function ClaimModal() {
     setAttempting(true)
     claimCallback()
       // reset modal and log error
-      .catch(error => {
+      .catch((error) => {
         setAttempting(false)
         console.log(error)
       })
@@ -115,12 +116,12 @@ export default function ClaimModal() {
               )}
               {userClaimData?.flags?.isLP &&
                 unclaimedAmount &&
-                JSBI.greaterThanOrEqual(unclaimedAmount.raw, nonLPAmount) && (
+                JSBI.greaterThanOrEqual(unclaimedAmount.quotient, nonLPAmount) && (
                   <RowBetween>
                     <TYPE.subHeader color="white">Liquidity</TYPE.subHeader>
                     <TYPE.subHeader color="white">
                       {unclaimedAmount
-                        .subtract(new TokenAmount(unclaimedAmount.token, nonLPAmount))
+                        .subtract(CurrencyAmount.fromRawAmount(unclaimedAmount.currency, nonLPAmount))
                         .toFixed(0, { groupSeparator: ',' })}{' '}
                       UNI
                     </TYPE.subHeader>
@@ -195,7 +196,10 @@ export default function ClaimModal() {
               <TYPE.subHeader color="black">Confirm this transaction in your wallet</TYPE.subHeader>
             )}
             {attempting && claimSubmitted && !claimConfirmed && chainId && claimTxn?.hash && (
-              <ExternalLink href={getEtherscanLink(chainId, claimTxn?.hash, 'transaction')} style={{ zIndex: 99 }}>
+              <ExternalLink
+                href={getExplorerLink(chainId, claimTxn?.hash, ExplorerDataType.TRANSACTION)}
+                style={{ zIndex: 99 }}
+              >
                 View transaction on Etherscan
               </ExternalLink>
             )}

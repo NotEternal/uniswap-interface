@@ -1,17 +1,17 @@
 import React, { useCallback, useContext } from 'react'
 import { useDispatch } from 'react-redux'
 import styled, { ThemeContext } from 'styled-components'
-import { useActiveWeb3React } from '../../hooks'
+import { SUPPORTED_WALLETS } from '../../constants/wallet'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { AppDispatch } from '../../state'
 import { clearAllTransactions } from '../../state/transactions/actions'
 import { shortenAddress } from '../../utils'
+import { ExplorerDataType, getExplorerLink } from '../../utils/getExplorerLink'
 import { AutoRow } from '../Row'
 import Copy from './Copy'
 import Transaction from './Transaction'
 
-import { SUPPORTED_WALLETS } from '../../constants'
 import { ReactComponent as Close } from '../../assets/images/x.svg'
-import { getEtherscanLink } from '../../utils'
 import { injected, walletconnect, walletlink, fortmatic, portis } from '../../connectors'
 import CoinbaseWalletIcon from '../../assets/images/coinbaseWalletIcon.svg'
 import WalletConnectIcon from '../../assets/images/walletConnectIcon.svg'
@@ -26,7 +26,7 @@ const HeaderRow = styled.div`
   ${({ theme }) => theme.flexRowNoWrap};
   padding: 1rem 1rem;
   font-weight: 500;
-  color: ${props => (props.color === 'blue' ? ({ theme }) => theme.primary1 : 'inherit')};
+  color: ${(props) => (props.color === 'blue' ? ({ theme }) => theme.primary1 : 'inherit')};
   ${({ theme }) => theme.mediaWidth.upToMedium`
     padding: 1rem;
   `};
@@ -76,7 +76,6 @@ const AccountGroupingRow = styled.div`
 `
 
 const AccountSection = styled.div`
-  background-color: ${({ theme }) => theme.bg1};
   padding: 0rem 1rem;
   ${({ theme }) => theme.mediaWidth.upToMedium`padding: 0rem 1rem 1.5rem 1rem;`};
 `
@@ -223,7 +222,7 @@ export default function AccountDetails({
   pendingTransactions,
   confirmedTransactions,
   ENSName,
-  openOptions
+  openOptions,
 }: AccountDetailsProps) {
   const { chainId, account, connector } = useActiveWeb3React()
   const theme = useContext(ThemeContext)
@@ -234,10 +233,10 @@ export default function AccountDetails({
     const isMetaMask = !!(ethereum && ethereum.isMetaMask)
     const name = Object.keys(SUPPORTED_WALLETS)
       .filter(
-        k =>
+        (k) =>
           SUPPORTED_WALLETS[k].connector === connector && (connector !== injected || isMetaMask === (k === 'METAMASK'))
       )
-      .map(k => SUPPORTED_WALLETS[k].name)[0]
+      .map((k) => SUPPORTED_WALLETS[k].name)[0]
     return <WalletName>Connected with {name}</WalletName>
   }
 
@@ -355,7 +354,7 @@ export default function AccountDetails({
                           <AddressLink
                             hasENS={!!ENSName}
                             isENS={true}
-                            href={chainId && getEtherscanLink(chainId, ENSName, 'address')}
+                            href={getExplorerLink(chainId, ENSName, ExplorerDataType.ADDRESS)}
                           >
                             <LinkIcon size={16} />
                             <span style={{ marginLeft: '4px' }}>View on Etherscan</span>
@@ -377,7 +376,7 @@ export default function AccountDetails({
                           <AddressLink
                             hasENS={!!ENSName}
                             isENS={false}
-                            href={getEtherscanLink(chainId, account, 'address')}
+                            href={getExplorerLink(chainId, account, ExplorerDataType.ADDRESS)}
                           >
                             <LinkIcon size={16} />
                             <span style={{ marginLeft: '4px' }}>View on Etherscan</span>

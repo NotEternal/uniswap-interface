@@ -1,22 +1,30 @@
 import React from 'react'
 import { AutoColumn } from '../../components/Column'
-import styled from 'styled-components'
-import { TYPE, ExternalLink } from '../../theme'
+import styled from 'styled-components/macro'
+import { UNI } from '../../constants/tokens'
+import { ExternalLink, TYPE } from '../../theme'
 import { RowBetween, RowFixed } from '../../components/Row'
 import { Link } from 'react-router-dom'
+import { getExplorerLink, ExplorerDataType } from '../../utils/getExplorerLink'
 import { ProposalStatus } from './styled'
 import { ButtonPrimary } from '../../components/Button'
-
 import { Button } from 'rebass/styled-components'
 import { darken } from 'polished'
-import { CardSection, DataCard, CardNoise, CardBGImage } from '../../components/earn/styled'
-import { useAllProposalData, ProposalData, useUserVotes, useUserDelegatee } from '../../state/governance/hooks'
+import { CardBGImage, CardNoise, CardSection, DataCard } from '../../components/earn/styled'
+import {
+  ProposalData,
+  ProposalState,
+  useAllProposalData,
+  useUserDelegatee,
+  useUserVotes,
+} from '../../state/governance/hooks'
 import DelegateModal from '../../components/vote/DelegateModal'
 import { useTokenBalance } from '../../state/wallet/hooks'
-import { useActiveWeb3React } from '../../hooks'
-import { UNI, ZERO_ADDRESS } from '../../constants'
-import { JSBI, TokenAmount, ChainId } from '@uniswap/sdk'
-import { shortenAddress, getEtherscanLink } from '../../utils'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { ZERO_ADDRESS } from '../../constants/misc'
+import { Token, CurrencyAmount } from '@uniswap/sdk-core'
+import JSBI from 'jsbi'
+import { shortenAddress } from '../../utils'
 import Loader from '../../components/Loader'
 import FormattedCurrencyAmount from '../../components/FormattedCurrencyAmount'
 import { useModalOpen, useToggleDelegateModal } from '../../state/application/hooks'
@@ -65,9 +73,9 @@ const VoteCard = styled(DataCard)`
 `
 
 const WrapSmall = styled(RowBetween)`
+  margin-bottom: 1rem;
   ${({ theme }) => theme.mediaWidth.upToSmall`
     flex-wrap: wrap;
-  
   `};
 `
 
@@ -113,13 +121,16 @@ export default function Vote() {
   const allProposals: ProposalData[] = useAllProposalData()
 
   // user data
-  const availableVotes: TokenAmount | undefined = useUserVotes()
-  const uniBalance: TokenAmount | undefined = useTokenBalance(account ?? undefined, chainId ? UNI[chainId] : undefined)
+  const availableVotes: CurrencyAmount<Token> | undefined = useUserVotes()
+  const uniBalance: CurrencyAmount<Token> | undefined = useTokenBalance(
+    account ?? undefined,
+    chainId ? UNI[chainId] : undefined
+  )
   const userDelegatee: string | undefined = useUserDelegatee()
 
   // show delegation option if they have have a balance, but have not delegated
   const showUnlockVoting = Boolean(
-    uniBalance && JSBI.notEqual(uniBalance.raw, JSBI.BigInt(0)) && userDelegatee === ZERO_ADDRESS
+    uniBalance && JSBI.notEqual(uniBalance.quotient, JSBI.BigInt(0)) && userDelegatee === ZERO_ADDRESS
   )
 
   return (
@@ -170,14 +181,14 @@ export default function Vote() {
             >
               Unlock Voting
             </ButtonPrimary>
-          ) : availableVotes && JSBI.notEqual(JSBI.BigInt(0), availableVotes?.raw) ? (
+          ) : availableVotes && JSBI.notEqual(JSBI.BigInt(0), availableVotes?.quotient) ? (
             <TYPE.body fontWeight={500} mr="6px">
               <FormattedCurrencyAmount currencyAmount={availableVotes} /> Votes
             </TYPE.body>
           ) : uniBalance &&
             userDelegatee &&
             userDelegatee !== ZERO_ADDRESS &&
-            JSBI.notEqual(JSBI.BigInt(0), uniBalance?.raw) ? (
+            JSBI.notEqual(JSBI.BigInt(0), uniBalance?.quotient) ? (
             <TYPE.body fontWeight={500} mr="6px">
               <FormattedCurrencyAmount currencyAmount={uniBalance} /> Votes
             </TYPE.body>
@@ -195,7 +206,7 @@ export default function Vote() {
                 </TYPE.body>
                 <AddressButton>
                   <StyledExternalLink
-                    href={getEtherscanLink(ChainId.MAINNET, userDelegatee, 'address')}
+                    href={getExplorerLink(1, userDelegatee, ExplorerDataType.ADDRESS)}
                     style={{ margin: '0 4px' }}
                   >
                     {userDelegatee === account ? 'Self' : shortenAddress(userDelegatee)}
@@ -223,13 +234,13 @@ export default function Vote() {
             <Proposal as={Link} to={'/vote/' + p.id} key={i}>
               <ProposalNumber>{p.id}</ProposalNumber>
               <ProposalTitle>{p.title}</ProposalTitle>
-              <ProposalStatus status={p.status}>{p.status}</ProposalStatus>
+              <ProposalStatus status={p.status}>{ProposalState[p.status]}</ProposalStatus>
             </Proposal>
           )
         })}
       </TopSection>
       <TYPE.subHeader color="text3">
-        A minimum threshhold of 1% of the total UNI supply is required to submit proposals
+        A minimum threshold of 1% of the total UNI supply is required to submit proposals
       </TYPE.subHeader>
     </PageWrapper>
   )

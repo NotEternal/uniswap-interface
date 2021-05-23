@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Modal from '../Modal'
 import { AutoColumn } from '../Column'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import { RowBetween } from '../Row'
 import { TYPE, CloseIcon } from '../../theme'
 import { ButtonError } from '../Button'
@@ -10,7 +10,7 @@ import { useStakingContract } from '../../hooks/useContract'
 import { SubmittedView, LoadingView } from '../ModalViews'
 import { TransactionResponse } from '@ethersproject/providers'
 import { useTransactionAdder } from '../../state/transactions/hooks'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 
 const ContentWrapper = styled(AutoColumn)`
   width: 100%;
@@ -46,7 +46,7 @@ export default function ClaimRewardModal({ isOpen, onDismiss, stakingInfo }: Sta
         .getReward({ gasLimit: 350000 })
         .then((response: TransactionResponse) => {
           addTransaction(response, {
-            summary: `Claim accumulated UNI rewards`
+            summary: `Claim accumulated UNI rewards`,
           })
           setHash(response.hash)
         })

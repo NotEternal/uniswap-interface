@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react'
 import { AutoColumn } from '../../components/Column'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
 import { Link } from 'react-router-dom'
-
-import { JSBI, TokenAmount, ETHER } from '@uniswap/sdk'
+import JSBI from 'jsbi'
+import { Token, CurrencyAmount } from '@uniswap/sdk-core'
 import { RouteComponentProps } from 'react-router-dom'
 import DoubleCurrencyLogo from '../../components/DoubleLogo'
 import { useCurrency } from '../../hooks/Tokens'
@@ -18,17 +18,16 @@ import { useStakingInfo } from '../../state/stake/hooks'
 import UnstakingModal from '../../components/earn/UnstakingModal'
 import ClaimRewardModal from '../../components/earn/ClaimRewardModal'
 import { useTokenBalance } from '../../state/wallet/hooks'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { useColor } from '../../hooks/useColor'
 import { CountUp } from 'use-count-up'
 
-import { wrappedCurrency } from '../../utils/wrappedCurrency'
 import { currencyId } from '../../utils/currencyId'
-import { useTotalSupply } from '../../data/TotalSupply'
-import { usePair } from '../../data/Reserves'
+import { useTotalSupply } from '../../hooks/useTotalSupply'
+import { useV2Pair } from '../../hooks/useV2Pairs'
 import usePrevious from '../../hooks/usePrevious'
-import useUSDCPrice from '../../utils/useUSDCPrice'
-import { BIG_INT_ZERO, BIG_INT_SECONDS_IN_WEEK } from '../../constants'
+import useUSDCPrice from '../../hooks/useUSDCPrice'
+import { BIG_INT_ZERO, BIG_INT_SECONDS_IN_WEEK } from '../../constants/misc'
 
 const PageWrapper = styled(AutoColumn)`
   max-width: 640px;
@@ -89,21 +88,21 @@ const DataRow = styled(RowBetween)`
 
 export default function Manage({
   match: {
-    params: { currencyIdA, currencyIdB }
-  }
+    params: { currencyIdA, currencyIdB },
+  },
 }: RouteComponentProps<{ currencyIdA: string; currencyIdB: string }>) {
-  const { account, chainId } = useActiveWeb3React()
+  const { account } = useActiveWeb3React()
 
   // get currencies and pair
   const [currencyA, currencyB] = [useCurrency(currencyIdA), useCurrency(currencyIdB)]
-  const tokenA = wrappedCurrency(currencyA ?? undefined, chainId)
-  const tokenB = wrappedCurrency(currencyB ?? undefined, chainId)
+  const tokenA = (currencyA ?? undefined)?.wrapped
+  const tokenB = (currencyB ?? undefined)?.wrapped
 
-  const [, stakingTokenPair] = usePair(tokenA, tokenB)
+  const [, stakingTokenPair] = useV2Pair(tokenA, tokenB)
   const stakingInfo = useStakingInfo(stakingTokenPair)?.[0]
 
   // detect existing unstaked LP position to show add button if none found
-  const userLiquidityUnstaked = useTokenBalance(account ?? undefined, stakingInfo?.stakedAmount?.token)
+  const userLiquidityUnstaked = useTokenBalance(account ?? undefined, stakingInfo?.stakedAmount?.currency)
   const showAddLiquidityButton = Boolean(stakingInfo?.stakedAmount?.equalTo('0') && userLiquidityUnstaked?.equalTo('0'))
 
   // toggle for staking modal and unstaking modal
@@ -114,23 +113,23 @@ export default function Manage({
   // fade cards if nothing staked or nothing earned yet
   const disableTop = !stakingInfo?.stakedAmount || stakingInfo.stakedAmount.equalTo(JSBI.BigInt(0))
 
-  const token = currencyA === ETHER ? tokenB : tokenA
-  const WETH = currencyA === ETHER ? tokenA : tokenB
+  const token = currencyA?.isNative ? tokenB : tokenA
+  const WETH = currencyA?.isNative ? tokenA : tokenB
   const backgroundColor = useColor(token)
 
   // get WETH value of staked LP tokens
-  const totalSupplyOfStakingToken = useTotalSupply(stakingInfo?.stakedAmount?.token)
-  let valueOfTotalStakedAmountInWETH: TokenAmount | undefined
+  const totalSupplyOfStakingToken = useTotalSupply(stakingInfo?.stakedAmount?.currency)
+  let valueOfTotalStakedAmountInWETH: CurrencyAmount<Token> | undefined
   if (totalSupplyOfStakingToken && stakingTokenPair && stakingInfo && WETH) {
     // take the total amount of LP tokens staked, multiply by ETH value of all LP tokens, divide by all LP tokens
-    valueOfTotalStakedAmountInWETH = new TokenAmount(
+    valueOfTotalStakedAmountInWETH = CurrencyAmount.fromRawAmount(
       WETH,
       JSBI.divide(
         JSBI.multiply(
-          JSBI.multiply(stakingInfo.totalStakedAmount.raw, stakingTokenPair.reserveOf(WETH).raw),
+          JSBI.multiply(stakingInfo.totalStakedAmount.quotient, stakingTokenPair.reserveOf(WETH).quotient),
           JSBI.BigInt(2) // this is b/c the value of LP shares are ~double the value of the WETH they entitle owner to
         ),
-        totalSupplyOfStakingToken.raw
+        totalSupplyOfStakingToken.quotient
       )
     )
   }
@@ -268,7 +267,7 @@ export default function Manage({
                 <div>
                   <TYPE.black>Your unclaimed UNI</TYPE.black>
                 </div>
-                {stakingInfo?.earnedAmount && JSBI.notEqual(BIG_INT_ZERO, stakingInfo?.earnedAmount?.raw) && (
+                {stakingInfo?.earnedAmount && JSBI.notEqual(BIG_INT_ZERO, stakingInfo?.earnedAmount?.quotient) && (
                   <ButtonEmpty
                     padding="8px"
                     borderRadius="8px"

@@ -1,29 +1,43 @@
+import { CurrencyAmount, Token } from '@uniswap/sdk-core'
+import { BigNumber } from 'ethers'
+import useCurrentBlockTimestamp from 'hooks/useCurrentBlockTimestamp'
+import JSBI from 'jsbi'
+import { DateTime } from 'luxon'
 import React, { useState } from 'react'
-import { AutoColumn } from '../../components/Column'
-import styled from 'styled-components'
+import { ArrowLeft } from 'react-feather'
+import ReactMarkdown from 'react-markdown'
 
 import { RouteComponentProps } from 'react-router-dom'
-import { TYPE, StyledInternalLink, ExternalLink } from '../../theme'
-import { RowFixed, RowBetween } from '../../components/Row'
-import { CardSection, DataCard } from '../../components/earn/styled'
-import { ArrowLeft } from 'react-feather'
+import styled from 'styled-components/macro'
 import { ButtonPrimary } from '../../components/Button'
-import { ProposalStatus } from './styled'
-import { useProposalData, useUserVotesAsOfBlock, ProposalData, useUserDelegatee } from '../../state/governance/hooks'
-import { DateTime } from 'luxon'
-import ReactMarkdown from 'react-markdown'
-import VoteModal from '../../components/vote/VoteModal'
-import { TokenAmount, JSBI } from '@uniswap/sdk'
-import { useActiveWeb3React } from '../../hooks'
-import { AVERAGE_BLOCK_TIME_IN_SECS, COMMON_CONTRACT_NAMES, UNI, ZERO_ADDRESS } from '../../constants'
-import { isAddress, getEtherscanLink } from '../../utils'
-import { ApplicationModal } from '../../state/application/actions'
-import { useModalOpen, useToggleDelegateModal, useToggleVoteModal, useBlockNumber } from '../../state/application/hooks'
-import DelegateModal from '../../components/vote/DelegateModal'
 import { GreyCard } from '../../components/Card'
+import { AutoColumn } from '../../components/Column'
+import { CardSection, DataCard } from '../../components/earn/styled'
+import { RowBetween, RowFixed } from '../../components/Row'
+import DelegateModal from '../../components/vote/DelegateModal'
+import VoteModal from '../../components/vote/VoteModal'
+import {
+  AVERAGE_BLOCK_TIME_IN_SECS,
+  COMMON_CONTRACT_NAMES,
+  DEFAULT_AVERAGE_BLOCK_TIME_IN_SECS,
+} from '../../constants/governance'
+import { ZERO_ADDRESS } from '../../constants/misc'
+import { UNI } from '../../constants/tokens'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { ApplicationModal } from '../../state/application/actions'
+import { useBlockNumber, useModalOpen, useToggleDelegateModal, useToggleVoteModal } from '../../state/application/hooks'
+import {
+  ProposalData,
+  ProposalState,
+  useProposalData,
+  useUserDelegatee,
+  useUserVotesAsOfBlock,
+} from '../../state/governance/hooks'
 import { useTokenBalance } from '../../state/wallet/hooks'
-import useCurrentBlockTimestamp from 'hooks/useCurrentBlockTimestamp'
-import { BigNumber } from 'ethers'
+import { ExternalLink, StyledInternalLink, TYPE } from '../../theme'
+import { isAddress } from '../../utils'
+import { ExplorerDataType, getExplorerLink } from '../../utils/getExplorerLink'
+import { ProposalStatus } from './styled'
 
 const PageWrapper = styled(AutoColumn)`
   width: 100%;
@@ -105,8 +119,8 @@ const ProposerAddressLink = styled(ExternalLink)`
 
 export default function VotePage({
   match: {
-    params: { id }
-  }
+    params: { id },
+  },
 }: RouteComponentProps<{ id: string }>) {
   const { chainId, account } = useActiveWeb3React()
 
@@ -131,7 +145,11 @@ export default function VotePage({
     proposalData && currentTimestamp && currentBlock
       ? DateTime.fromSeconds(
           currentTimestamp
-            .add(BigNumber.from(AVERAGE_BLOCK_TIME_IN_SECS).mul(BigNumber.from(proposalData.endBlock - currentBlock)))
+            .add(
+              BigNumber.from(
+                (chainId && AVERAGE_BLOCK_TIME_IN_SECS[chainId]) ?? DEFAULT_AVERAGE_BLOCK_TIME_IN_SECS
+              ).mul(BigNumber.from(proposalData.endBlock - currentBlock))
+            )
             .toNumber()
         )
       : undefined
@@ -145,29 +163,34 @@ export default function VotePage({
     proposalData && totalVotes ? ((proposalData.againstCount * 100) / totalVotes).toFixed(0) + '%' : '0%'
 
   // only count available votes as of the proposal start block
-  const availableVotes: TokenAmount | undefined = useUserVotesAsOfBlock(proposalData?.startBlock ?? undefined)
+  const availableVotes: CurrencyAmount<Token> | undefined = useUserVotesAsOfBlock(proposalData?.startBlock ?? undefined)
 
   // only show voting if user has > 0 votes at proposal start block and proposal is active,
   const showVotingButtons =
     availableVotes &&
-    JSBI.greaterThan(availableVotes.raw, JSBI.BigInt(0)) &&
+    JSBI.greaterThan(availableVotes.quotient, JSBI.BigInt(0)) &&
     proposalData &&
-    proposalData.status === 'active'
+    proposalData.status === ProposalState.Active
 
-  const uniBalance: TokenAmount | undefined = useTokenBalance(account ?? undefined, chainId ? UNI[chainId] : undefined)
+  const uniBalance: CurrencyAmount<Token> | undefined = useTokenBalance(
+    account ?? undefined,
+    chainId ? UNI[chainId] : undefined
+  )
   const userDelegatee: string | undefined = useUserDelegatee()
 
   // in blurb link to home page if they are able to unlock
   const showLinkForUnlock = Boolean(
-    uniBalance && JSBI.notEqual(uniBalance.raw, JSBI.BigInt(0)) && userDelegatee === ZERO_ADDRESS
+    uniBalance && JSBI.notEqual(uniBalance.quotient, JSBI.BigInt(0)) && userDelegatee === ZERO_ADDRESS
   )
 
   // show links in propsoal details if content is an address
   // if content is contract with common name, replace address with common name
   const linkIfAddress = (content: string) => {
     if (isAddress(content) && chainId) {
-      const commonName = COMMON_CONTRACT_NAMES[content] ?? content
-      return <ExternalLink href={getEtherscanLink(chainId, content, 'address')}>{commonName}</ExternalLink>
+      const commonName = COMMON_CONTRACT_NAMES[chainId]?.[content] ?? content
+      return (
+        <ExternalLink href={getExplorerLink(chainId, content, ExplorerDataType.ADDRESS)}>{commonName}</ExternalLink>
+      )
     }
     return <span>{content}</span>
   }
@@ -181,7 +204,9 @@ export default function VotePage({
           <ArrowWrapper to="/vote">
             <ArrowLeft size={20} /> All Proposals
           </ArrowWrapper>
-          {proposalData && <ProposalStatus status={proposalData?.status ?? ''}>{proposalData?.status}</ProposalStatus>}
+          {proposalData && (
+            <ProposalStatus status={proposalData.status}>{ProposalState[proposalData.status]}</ProposalStatus>
+          )}
         </RowBetween>
         <AutoColumn gap="10px" style={{ width: '100%' }}>
           <TYPE.largeHeader style={{ marginBottom: '.5rem' }}>{proposalData?.title}</TYPE.largeHeader>
@@ -194,7 +219,7 @@ export default function VotePage({
                 : ''}
             </TYPE.main>
           </RowBetween>
-          {proposalData && proposalData.status === 'active' && !showVotingButtons && (
+          {proposalData && proposalData.status === ProposalState.Active && !showVotingButtons && (
             <GreyCard>
               <TYPE.black>
                 Only UNI votes that were self delegated or delegated to another address before block{' '}
@@ -295,7 +320,11 @@ export default function VotePage({
         <AutoColumn gap="md">
           <TYPE.mediumHeader fontWeight={600}>Proposer</TYPE.mediumHeader>
           <ProposerAddressLink
-            href={proposalData?.proposer && chainId ? getEtherscanLink(chainId, proposalData?.proposer, 'address') : ''}
+            href={
+              proposalData?.proposer && chainId
+                ? getExplorerLink(chainId, proposalData?.proposer, ExplorerDataType.ADDRESS)
+                : ''
+            }
           >
             <ReactMarkdown source={proposalData?.proposer} />
           </ProposerAddressLink>

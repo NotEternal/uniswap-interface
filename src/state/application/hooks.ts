@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { AppDispatch, AppState } from '../index'
 import { addPopup, ApplicationModal, PopupContent, removePopup, setOpenModal } from './actions'
 
@@ -85,5 +85,5 @@ export function useRemovePopup(): (key: string) => void {
 // get the list of active popups
 export function useActivePopups(): AppState['application']['popupList'] {
   const list = useSelector((state: AppState) => state.application.popupList)
-  return useMemo(() => list.filter(item => item.show), [list])
+  return useMemo(() => list.filter((item) => item.show), [list])
 }
