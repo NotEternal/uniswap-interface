@@ -16,16 +16,23 @@ import {
   toggleURLWarning,
   updateUserSingleHopOnly,
   updateHideClosedPositions,
+  updateUserLocale,
+  updateArbitrumAlphaAcknowledged,
 } from './actions'
+import { SupportedLocale } from 'constants/locales'
 
 const currentTimestamp = () => new Date().getTime()
 
 export interface UserState {
+  arbitrumAlphaAcknowledged: boolean
+
   // the timestamp of the last updateVersion action
   lastUpdateVersionTimestamp?: number
 
   userDarkMode: boolean | null // the user's choice for dark mode or light mode
   matchesDarkMode: boolean // whether the dark mode media query matches
+
+  userLocale: SupportedLocale | null
 
   userExpertMode: boolean
 
@@ -63,9 +70,11 @@ function pairKey(token0Address: string, token1Address: string) {
 }
 
 export const initialState: UserState = {
+  arbitrumAlphaAcknowledged: false,
   userDarkMode: null,
   matchesDarkMode: false,
   userExpertMode: false,
+  userLocale: null,
   userSingleHopOnly: false,
   userHideClosedPositions: false,
   userSlippageTolerance: 'auto',
@@ -120,8 +129,15 @@ export default createReducer(initialState, (builder) =>
       state.matchesDarkMode = action.payload.matchesDarkMode
       state.timestamp = currentTimestamp()
     })
+    .addCase(updateArbitrumAlphaAcknowledged, (state, action) => {
+      state.arbitrumAlphaAcknowledged = action.payload.arbitrumAlphaAcknowledged
+    })
     .addCase(updateUserExpertMode, (state, action) => {
       state.userExpertMode = action.payload.userExpertMode
+      state.timestamp = currentTimestamp()
+    })
+    .addCase(updateUserLocale, (state, action) => {
+      state.userLocale = action.payload.userLocale
       state.timestamp = currentTimestamp()
     })
     .addCase(updateUserSlippageTolerance, (state, action) => {

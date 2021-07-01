@@ -1,9 +1,10 @@
-import { Currency, Ether, Token } from '@uniswap/sdk-core'
-import React, { KeyboardEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Currency, Token } from '@uniswap/sdk-core'
+import { KeyboardEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactGA from 'react-ga'
-import { useTranslation } from 'react-i18next'
+import { t, Trans } from '@lingui/macro'
 import { FixedSizeList } from 'react-window'
 import { Text } from 'rebass'
+import { ExtendedEther } from '../../constants/tokens'
 import { useActiveWeb3React } from '../../hooks/web3'
 import { useAllTokens, useToken, useIsUserAddedToken, useSearchInactiveTokenLists } from '../../hooks/Tokens'
 import { CloseIcon, TYPE, ButtonText, IconWrapper } from '../../theme'
@@ -47,6 +48,8 @@ interface CurrencySearchProps {
   onCurrencySelect: (currency: Currency) => void
   otherSelectedCurrency?: Currency | null
   showCommonBases?: boolean
+  showCurrencyAmount?: boolean
+  disableNonToken?: boolean
   showManageView: () => void
   showImportView: () => void
   setImportToken: (token: Token) => void
@@ -57,13 +60,14 @@ export function CurrencySearch({
   onCurrencySelect,
   otherSelectedCurrency,
   showCommonBases,
+  showCurrencyAmount,
+  disableNonToken,
   onDismiss,
   isOpen,
   showManageView,
   showImportView,
   setImportToken,
 }: CurrencySearchProps) {
-  const { t } = useTranslation()
   const { chainId } = useActiveWeb3React()
   const theme = useTheme()
 
@@ -106,7 +110,7 @@ export function CurrencySearch({
 
   const filteredSortedTokens = useSortedTokensByQuery(sortedTokens, debouncedQuery)
 
-  const ether = useMemo(() => chainId && Ether.onChain(chainId), [chainId])
+  const ether = useMemo(() => chainId && ExtendedEther.onChain(chainId), [chainId])
 
   const filteredSortedTokensWithETH: Currency[] = useMemo(() => {
     const s = debouncedQuery.toLowerCase().trim()
@@ -172,7 +176,7 @@ export function CurrencySearch({
       <PaddedColumn gap="16px">
         <RowBetween>
           <Text fontWeight={500} fontSize={16}>
-            Select a token
+            <Trans>Select a token</Trans>
           </Text>
           <CloseIcon onClick={onDismiss} />
         </RowBetween>
@@ -180,7 +184,7 @@ export function CurrencySearch({
           <SearchInput
             type="text"
             id="token-search-input"
-            placeholder={t('tokenSearchPlaceholder')}
+            placeholder={t`Search name or paste address`}
             autoComplete="off"
             value={searchQuery}
             ref={inputRef as RefObject<HTMLInputElement>}
@@ -203,7 +207,7 @@ export function CurrencySearch({
             {({ height }) => (
               <CurrencyList
                 height={height}
-                currencies={filteredSortedTokensWithETH}
+                currencies={disableNonToken ? filteredSortedTokens : filteredSortedTokensWithETH}
                 otherListTokens={filteredInactiveTokens}
                 onCurrencySelect={handleCurrencySelect}
                 otherCurrency={otherSelectedCurrency}
@@ -211,6 +215,7 @@ export function CurrencySearch({
                 fixedListRef={fixedList}
                 showImportView={showImportView}
                 setImportToken={setImportToken}
+                showCurrencyAmount={showCurrencyAmount}
               />
             )}
           </AutoSizer>
@@ -218,18 +223,20 @@ export function CurrencySearch({
       ) : (
         <Column style={{ padding: '20px', height: '100%' }}>
           <TYPE.main color={theme.text3} textAlign="center" mb="20px">
-            No results found.
+            <Trans>No results found.</Trans>
           </TYPE.main>
         </Column>
       )}
       <Footer>
         <Row justify="center">
-          <ButtonText onClick={showManageView} color={theme.blue1} className="list-token-manage-button">
+          <ButtonText onClick={showManageView} color={theme.primary1} className="list-token-manage-button">
             <RowFixed>
-              <IconWrapper size="16px" marginRight="6px">
+              <IconWrapper size="16px" marginRight="6px" stroke={theme.primaryText1}>
                 <Edit />
               </IconWrapper>
-              <TYPE.main color={theme.blue1}>Manage Token Lists</TYPE.main>
+              <TYPE.main color={theme.primaryText1}>
+                <Trans>Manage Token Lists</Trans>
+              </TYPE.main>
             </RowFixed>
           </ButtonText>
         </Row>

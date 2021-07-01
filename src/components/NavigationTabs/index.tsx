@@ -1,15 +1,14 @@
-import React from 'react'
 import styled from 'styled-components/macro'
 import { darken } from 'polished'
-import { useTranslation } from 'react-i18next'
-import { NavLink, Link as HistoryLink } from 'react-router-dom'
+import { Trans } from '@lingui/macro'
+import { NavLink, Link as HistoryLink, useLocation } from 'react-router-dom'
 import { Percent } from '@uniswap/sdk-core'
 
 import { ArrowLeft } from 'react-feather'
-import { RowBetween } from '../Row'
+import Row, { RowBetween } from '../Row'
 import SettingsTab from '../Settings'
-import { useDispatch } from 'react-redux'
-import { AppDispatch } from 'state'
+
+import { useAppDispatch } from 'state/hooks'
 import { resetMintState } from 'state/mint/actions'
 import { resetMintState as resetMintV3State } from 'state/mint/v3/actions'
 import { TYPE } from 'theme'
@@ -60,14 +59,13 @@ const StyledArrowLeft = styled(ArrowLeft)`
 `
 
 export function SwapPoolTabs({ active }: { active: 'swap' | 'pool' }) {
-  const { t } = useTranslation()
   return (
     <Tabs style={{ marginBottom: '20px', display: 'none', padding: '1rem 1rem 0 1rem' }}>
       <StyledNavLink id={`swap-nav-link`} to={'/swap'} isActive={() => active === 'swap'}>
-        {t('swap')}
+        <Trans>Swap</Trans>
       </StyledNavLink>
       <StyledNavLink id={`pool-nav-link`} to={'/pool'} isActive={() => active === 'pool'}>
-        {t('pool')}
+        <Trans>Pool</Trans>
       </StyledNavLink>
     </Tabs>
   )
@@ -80,7 +78,9 @@ export function FindPoolTabs({ origin }: { origin: string }) {
         <HistoryLink to={origin}>
           <StyledArrowLeft />
         </HistoryLink>
-        <ActiveText>Import Pool</ActiveText>
+        <ActiveText>
+          <Trans>Import V2 Pool</Trans>
+        </ActiveText>
       </RowBetween>
     </Tabs>
   )
@@ -89,24 +89,29 @@ export function FindPoolTabs({ origin }: { origin: string }) {
 export function AddRemoveTabs({
   adding,
   creating,
-  positionID,
   defaultSlippage,
+  positionID,
 }: {
   adding: boolean
   creating: boolean
-  positionID?: string | undefined
   defaultSlippage: Percent
+  positionID?: string | undefined
 }) {
   const theme = useTheme()
-
   // reset states on back
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
+  const location = useLocation()
+
+  // detect if back should redirect to v3 or v2 pool page
+  const poolLink = location.pathname.includes('add/v2')
+    ? '/pool/v2'
+    : '/pool' + (!!positionID ? `/${positionID.toString()}` : '')
 
   return (
     <Tabs>
       <RowBetween style={{ padding: '1rem 1rem 0 1rem' }}>
         <HistoryLink
-          to={'/pool' + (!!positionID ? `/${positionID.toString()}` : '')}
+          to={poolLink}
           onClick={() => {
             if (adding) {
               // not 100% sure both of these are needed
@@ -118,10 +123,29 @@ export function AddRemoveTabs({
           <StyledArrowLeft stroke={theme.text2} />
         </HistoryLink>
         <TYPE.mediumHeader fontWeight={500} fontSize={20}>
-          {creating ? 'Create a pair' : adding ? 'Add Liquidity' : 'Remove Liquidity'}
+          {creating ? (
+            <Trans>Create a pair</Trans>
+          ) : adding ? (
+            <Trans>Add Liquidity</Trans>
+          ) : (
+            <Trans>Remove Liquidity</Trans>
+          )}
         </TYPE.mediumHeader>
         <SettingsTab placeholderSlippage={defaultSlippage} />
       </RowBetween>
+    </Tabs>
+  )
+}
+
+export function CreateProposalTabs() {
+  return (
+    <Tabs>
+      <Row style={{ padding: '1rem 1rem 0 1rem' }}>
+        <HistoryLink to="/vote">
+          <StyledArrowLeft />
+        </HistoryLink>
+        <ActiveText style={{ marginLeft: 'auto', marginRight: 'auto' }}>Create Proposal</ActiveText>
+      </Row>
     </Tabs>
   )
 }

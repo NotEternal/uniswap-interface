@@ -1,5 +1,5 @@
 import { transparentize } from 'polished'
-import React from 'react'
+import { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { AlertTriangle } from 'react-feather'
@@ -165,7 +165,7 @@ const SwapCallbackErrorInnerAlertTriangle = styled.div`
   height: 48px;
 `
 
-export function SwapCallbackError({ error }: { error: string }) {
+export function SwapCallbackError({ error }: { error: ReactNode }) {
   return (
     <SwapCallbackErrorInner>
       <SwapCallbackErrorInnerAlertTriangle>
@@ -177,8 +177,8 @@ export function SwapCallbackError({ error }: { error: string }) {
 }
 
 export const SwapShowAcceptChanges = styled(AutoColumn)`
-  background-color: ${({ theme }) => transparentize(0.9, theme.primary1)};
-  color: ${({ theme }) => theme.primary1};
+  background-color: ${({ theme }) => transparentize(0.95, theme.primary3)};
+  color: ${({ theme }) => theme.primaryText1};
   padding: 0.5rem;
   border-radius: 12px;
   margin-top: 8px;

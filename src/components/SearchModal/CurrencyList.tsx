@@ -1,5 +1,6 @@
+import { Trans } from '@lingui/macro'
 import { Currency, CurrencyAmount, Token } from '@uniswap/sdk-core'
-import React, { CSSProperties, MutableRefObject, useCallback, useMemo } from 'react'
+import { CSSProperties, MutableRefObject, useCallback, useMemo } from 'react'
 import { FixedSizeList } from 'react-window'
 import { Text } from 'rebass'
 import styled from 'styled-components/macro'
@@ -103,12 +104,14 @@ function CurrencyRow({
   isSelected,
   otherSelected,
   style,
+  showCurrencyAmount,
 }: {
   currency: Currency
   onSelect: () => void
   isSelected: boolean
   otherSelected: boolean
   style: CSSProperties
+  showCurrencyAmount?: boolean
 }) {
   const { account } = useActiveWeb3React()
   const key = currencyKey(currency)
@@ -132,13 +135,19 @@ function CurrencyRow({
           {currency.symbol}
         </Text>
         <TYPE.darkGray ml="0px" fontSize={'12px'} fontWeight={300}>
-          {currency.name} {!currency.isNative && !isOnSelectedList && customAdded && '• Added by user'}
+          {!currency.isNative && !isOnSelectedList && customAdded ? (
+            <Trans>{currency.name} • Added by user</Trans>
+          ) : (
+            currency.name
+          )}
         </TYPE.darkGray>
       </Column>
       <TokenTags currency={currency} />
-      <RowFixed style={{ justifySelf: 'flex-end' }}>
-        {balance ? <Balance balance={balance} /> : account ? <Loader /> : null}
-      </RowFixed>
+      {showCurrencyAmount && (
+        <RowFixed style={{ justifySelf: 'flex-end' }}>
+          {balance ? <Balance balance={balance} /> : account ? <Loader /> : null}
+        </RowFixed>
+      )}
     </MenuItem>
   )
 }
@@ -158,10 +167,16 @@ function BreakLineComponent({ style }: { style: CSSProperties }) {
           <RowFixed>
             <TokenListLogoWrapper src={TokenListLogo} />
             <TYPE.main ml="6px" fontSize="12px" color={theme.text1}>
-              Expanded results from inactive Token Lists
+              <Trans>Expanded results from inactive Token Lists</Trans>
             </TYPE.main>
           </RowFixed>
-          <QuestionHelper text="Tokens from inactive lists. Import specific tokens below or click 'Manage' to activate more lists." />
+          <QuestionHelper
+            text={
+              <Trans>
+                Tokens from inactive lists. Import specific tokens below or click Manage to activate more lists.
+              </Trans>
+            }
+          />
         </RowBetween>
       </LightGreyCard>
     </FixedContentRow>
@@ -178,6 +193,7 @@ export default function CurrencyList({
   fixedListRef,
   showImportView,
   setImportToken,
+  showCurrencyAmount,
 }: {
   height: number
   currencies: Currency[]
@@ -188,6 +204,7 @@ export default function CurrencyList({
   fixedListRef?: MutableRefObject<FixedSizeList | undefined>
   showImportView: () => void
   setImportToken: (token: Token) => void
+  showCurrencyAmount?: boolean
 }) {
   const itemData: (Currency | BreakLine)[] = useMemo(() => {
     if (otherListTokens && otherListTokens?.length > 0) {
@@ -226,13 +243,22 @@ export default function CurrencyList({
             isSelected={isSelected}
             onSelect={handleSelect}
             otherSelected={otherSelected}
+            showCurrencyAmount={showCurrencyAmount}
           />
         )
       } else {
         return null
       }
     },
-    [currencies.length, onCurrencySelect, otherCurrency, selectedCurrency, setImportToken, showImportView]
+    [
+      currencies.length,
+      onCurrencySelect,
+      otherCurrency,
+      selectedCurrency,
+      setImportToken,
+      showImportView,
+      showCurrencyAmount,
+    ]
   )
 
   const itemKey = useCallback((index: number, data: typeof itemData) => {

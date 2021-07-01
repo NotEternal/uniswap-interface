@@ -1,4 +1,4 @@
-import React from 'react'
+import { Trans } from '@lingui/macro'
 import { Text } from 'rebass'
 import { Currency } from '@uniswap/sdk-core'
 import styled from 'styled-components/macro'
@@ -22,8 +22,9 @@ const BaseWrapper = styled.div<{ disable?: boolean }>`
     background-color: ${({ theme, disable }) => !disable && theme.bg2};
   }
 
+  color: ${({ theme, disable }) => disable && theme.text3};
   background-color: ${({ theme, disable }) => disable && theme.bg3};
-  opacity: ${({ disable }) => disable && '0.4'};
+  filter: ${({ disable }) => disable && 'grayscale(1)'};
 `
 
 export default function CommonBases({
@@ -41,9 +42,9 @@ export default function CommonBases({
     <AutoColumn gap="md">
       <AutoRow>
         <Text fontWeight={500} fontSize={14}>
-          Common bases
+          <Trans>Common bases</Trans>
         </Text>
-        <QuestionHelper text="These tokens are commonly paired with other tokens." />
+        <QuestionHelper text={<Trans>These tokens are commonly paired with other tokens.</Trans>} />
       </AutoRow>
       <AutoRow gap="4px">
         {bases.map((currency: Currency) => {

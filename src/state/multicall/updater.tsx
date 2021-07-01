@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
 import { Multicall2 } from '../../abis/types'
 import { useActiveWeb3React } from '../../hooks/web3'
 import { useMulticall2Contract } from '../../hooks/useContract'
 import useDebounce from '../../hooks/useDebounce'
 import chunkArray from '../../utils/chunkArray'
-import { CancelledError, retry, RetryableError } from '../../utils/retry'
+import { retry, RetryableError } from '../../utils/retry'
+import { updateBlockNumber } from '../application/actions'
 import { useBlockNumber } from '../application/hooks'
-import { AppDispatch, AppState } from '../index'
+import { AppState } from '../index'
 import {
   Call,
   errorFetchingMulticallResults,
@@ -15,6 +15,7 @@ import {
   parseCallKey,
   updateMulticallResults,
 } from './actions'
+import { useAppDispatch, useAppSelector } from 'state/hooks'
 
 /**
  * Fetches a chunk of calls, enforcing a minimum block number constraint
@@ -45,8 +46,9 @@ async function fetchChunk(
     throw error
   }
   if (resultsBlockNumber < minBlockNumber) {
-    console.debug(`Fetched results for old block number: ${resultsBlockNumber.toString()} vs. ${minBlockNumber}`)
-    throw new RetryableError('Fetched for old block number')
+    const retryMessage = `Fetched results for old block number: ${resultsBlockNumber.toString()} vs. ${minBlockNumber}`
+    console.debug(retryMessage)
+    throw new RetryableError(retryMessage)
   }
   return { results, blockNumber: resultsBlockNumber }
 }
@@ -117,8 +119,8 @@ export function outdatedListeningKeys(
 }
 
 export default function Updater(): null {
-  const dispatch = useDispatch<AppDispatch>()
-  const state = useSelector<AppState, AppState['multicall']>((state) => state.multicall)
+  const dispatch = useAppDispatch()
+  const state = useAppSelector((state) => state.multicall)
   // wait for listeners to settle before triggering updates
   const debouncedListeners = useDebounce(state.callListeners, 100)
   const latestBlockNumber = useBlockNumber()
@@ -148,8 +150,8 @@ export default function Updater(): null {
 
     const chunkedCalls = chunkArray(calls)
 
-    if (cancellations.current?.blockNumber !== latestBlockNumber) {
-      cancellations.current?.cancellations?.forEach((c) => c())
+    if (cancellations.current && cancellations.current.blockNumber !== latestBlockNumber) {
+      cancellations.current.cancellations.forEach((c) => c())
     }
 
     dispatch(
@@ -170,8 +172,6 @@ export default function Updater(): null {
         })
         promise
           .then(({ results: returnData, blockNumber: fetchBlockNumber }) => {
-            cancellations.current = { cancellations: [], blockNumber: latestBlockNumber }
-
             // accumulates the length of all previous indices
             const firstCallKeyIndex = chunkedCalls.slice(0, index).reduce<number>((memo, curr) => memo + curr.length, 0)
             const lastCallKeyIndex = firstCallKeyIndex + returnData.length
@@ -215,10 +215,14 @@ export default function Updater(): null {
                 })
               )
             }
+
+            if (fetchBlockNumber > latestBlockNumber) {
+              dispatch(updateBlockNumber({ chainId, blockNumber: fetchBlockNumber }))
+            }
           })
           .catch((error: any) => {
-            if (error instanceof CancelledError) {
-              console.debug('Cancelled fetch for blockNumber', latestBlockNumber)
+            if (error.isCancelledError) {
+              console.debug('Cancelled fetch for blockNumber', latestBlockNumber, chunk, chainId)
               return
             }
             console.error('Failed to fetch multicall chunk', chunk, chainId, error)

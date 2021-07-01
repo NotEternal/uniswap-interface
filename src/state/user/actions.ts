@@ -1,4 +1,5 @@
 import { createAction } from '@reduxjs/toolkit'
+import { SupportedLocale } from 'constants/locales'
 
 export interface SerializedToken {
   chainId: number
@@ -14,8 +15,12 @@ export interface SerializedPair {
 }
 
 export const updateMatchesDarkMode = createAction<{ matchesDarkMode: boolean }>('user/updateMatchesDarkMode')
+export const updateArbitrumAlphaAcknowledged = createAction<{ arbitrumAlphaAcknowledged: boolean }>(
+  'user/updateArbitrumAlphaAcknowledged'
+)
 export const updateUserDarkMode = createAction<{ userDarkMode: boolean }>('user/updateUserDarkMode')
 export const updateUserExpertMode = createAction<{ userExpertMode: boolean }>('user/updateUserExpertMode')
+export const updateUserLocale = createAction<{ userLocale: SupportedLocale }>('user/updateUserLocale')
 export const updateUserSingleHopOnly = createAction<{ userSingleHopOnly: boolean }>('user/updateUserSingleHopOnly')
 export const updateHideClosedPositions = createAction<{ userHideClosedPositions: boolean }>('user/hideClosedPositions')
 export const updateUserSlippageTolerance = createAction<{ userSlippageTolerance: number | 'auto' }>(

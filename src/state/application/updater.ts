@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useActiveWeb3React } from '../../hooks/web3'
+import { useAppDispatch } from 'state/hooks'
 import useDebounce from '../../hooks/useDebounce'
 import useIsWindowVisible from '../../hooks/useIsWindowVisible'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { updateBlockNumber } from './actions'
-import { useDispatch } from 'react-redux'
 
 export default function Updater(): null {
   const { library, chainId } = useActiveWeb3React()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
 
   const windowVisible = useIsWindowVisible()
 

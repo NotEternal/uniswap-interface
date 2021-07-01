@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Position } from '@uniswap/v3-sdk'
 import Badge from 'components/Badge'
 import DoubleCurrencyLogo from 'components/DoubleLogo'
@@ -8,14 +8,15 @@ import { Link } from 'react-router-dom'
 import styled from 'styled-components/macro'
 import { HideSmall, MEDIA_WIDTHS, SmallOnly } from 'theme'
 import { PositionDetails } from 'types/position'
-import { WETH9, Price, Token, Percent } from '@uniswap/sdk-core'
-import { formatPrice } from 'utils/formatTokenAmount'
+import { Price, Token, Percent } from '@uniswap/sdk-core'
+import { formatPrice } from 'utils/formatCurrencyAmount'
 import Loader from 'components/Loader'
 import { unwrappedToken } from 'utils/unwrappedToken'
 import RangeBadge from 'components/Badge/RangeBadge'
 import { RowFixed } from 'components/Row'
 import HoverInlineText from 'components/HoverInlineText'
-import { DAI, USDC, USDT, WBTC } from '../../constants/tokens'
+import { DAI, USDC, USDT, WBTC, WETH9_EXTENDED } from '../../constants/tokens'
+import { Trans } from '@lingui/macro'
 
 const LinkRow = styled(Link)`
   align-items: center;
@@ -145,7 +146,7 @@ export function getPriceOrderingFromPositionForUI(position?: Position): {
   }
 
   // if token1 is an ETH-/BTC-stable asset, set it as the base token
-  const bases = [...Object.values(WETH9), WBTC]
+  const bases = [...Object.values(WETH9_EXTENDED), WBTC]
   if (bases.some((base) => base.equals(token1))) {
     return {
       priceLower: position.token0PriceUpper.invert(),
@@ -223,7 +224,9 @@ export default function PositionListItem({ positionDetails }: PositionListItemPr
           </DataText>
           &nbsp;
           <Badge>
-            <BadgeText>{new Percent(feeAmount, 1_000_000).toSignificant()}%</BadgeText>
+            <BadgeText>
+              <Trans>{new Percent(feeAmount, 1_000_000).toSignificant()}%</Trans>
+            </BadgeText>
           </Badge>
         </PrimaryPositionIdData>
         <RangeBadge removed={removed} inRange={!outOfRange} />
@@ -232,9 +235,13 @@ export default function PositionListItem({ positionDetails }: PositionListItemPr
       {priceLower && priceUpper ? (
         <RangeLineItem>
           <RangeText>
-            <ExtentsText>Min: </ExtentsText>
-            {formatPrice(priceLower, 5)} <HoverInlineText text={currencyQuote?.symbol} /> {' per '}{' '}
-            <HoverInlineText text={currencyBase?.symbol ?? ''} />
+            <ExtentsText>
+              <Trans>Min: </Trans>
+            </ExtentsText>
+            <Trans>
+              {formatPrice(priceLower, 5)} <HoverInlineText text={currencyQuote?.symbol} /> per{' '}
+              <HoverInlineText text={currencyBase?.symbol ?? ''} />
+            </Trans>
           </RangeText>{' '}
           <HideSmall>
             <DoubleArrow>⟷</DoubleArrow>{' '}
@@ -243,9 +250,13 @@ export default function PositionListItem({ positionDetails }: PositionListItemPr
             <DoubleArrow>↕</DoubleArrow>{' '}
           </SmallOnly>
           <RangeText>
-            <ExtentsText>Max:</ExtentsText>
-            {formatPrice(priceUpper, 5)} <HoverInlineText text={currencyQuote?.symbol} /> {' per '}{' '}
-            <HoverInlineText maxCharacters={10} text={currencyBase?.symbol} />
+            <ExtentsText>
+              <Trans>Max:</Trans>
+            </ExtentsText>
+            <Trans>
+              {formatPrice(priceUpper, 5)} <HoverInlineText text={currencyQuote?.symbol} /> per{' '}
+              <HoverInlineText maxCharacters={10} text={currencyBase?.symbol} />
+            </Trans>
           </RangeText>
         </RangeLineItem>
       ) : (

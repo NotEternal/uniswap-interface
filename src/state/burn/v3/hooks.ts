@@ -5,15 +5,16 @@ import { useActiveWeb3React } from 'hooks/web3'
 import { useToken } from 'hooks/Tokens'
 import { useV3PositionFees } from 'hooks/useV3PositionFees'
 import { useCallback, useMemo } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
 import { PositionDetails } from 'types/position'
 
-import { AppDispatch, AppState } from '../../index'
+import { AppState } from '../../index'
 import { selectPercent } from './actions'
 import { unwrappedToken } from 'utils/unwrappedToken'
+import { useAppDispatch, useAppSelector } from 'state/hooks'
+import { t } from '@lingui/macro'
 
 export function useBurnV3State(): AppState['burnV3'] {
-  return useSelector<AppState, AppState['burnV3']>((state) => state.burnV3)
+  return useAppSelector((state) => state.burnV3)
 }
 
 export function useDerivedV3BurnInfo(
@@ -75,10 +76,10 @@ export function useDerivedV3BurnInfo(
 
   let error: string | undefined
   if (!account) {
-    error = 'Connect Wallet'
+    error = t`Connect Wallet`
   }
   if (percent === 0) {
-    error = error ?? 'Enter a percent'
+    error = error ?? t`Enter a percent`
   }
   return {
     position: positionSDK,
@@ -95,7 +96,7 @@ export function useDerivedV3BurnInfo(
 export function useBurnV3ActionHandlers(): {
   onPercentSelect: (percent: number) => void
 } {
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
 
   const onPercentSelect = useCallback(
     (percent: number) => {

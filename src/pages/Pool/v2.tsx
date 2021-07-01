@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import styled, { ThemeContext } from 'styled-components'
 import JSBI from 'jsbi'
 import { Link } from 'react-router-dom'
@@ -19,9 +19,11 @@ import { useV2Pairs } from '../../hooks/useV2Pairs'
 import { toV2LiquidityToken, useTrackedTokenPairs } from '../../state/user/hooks'
 import { Dots } from '../../components/swap/styleds'
 import { CardSection, DataCard, CardNoise, CardBGImage } from '../../components/earn/styled'
+import { SwitchLocaleLink } from '../../components/SwitchLocaleLink'
 import { useStakingInfo } from '../../state/stake/hooks'
 import { BIG_INT_ZERO } from '../../constants/misc'
 import { Pair } from '@uniswap/v2-sdk'
+import { Trans } from '@lingui/macro'
 
 const PageWrapper = styled(AutoColumn)`
   max-width: 640px;
@@ -53,6 +55,7 @@ const ButtonRow = styled(RowFixed)`
 
 const ResponsiveButtonPrimary = styled(ButtonPrimary)`
   width: fit-content;
+  border-radius: 12px;
   ${({ theme }) => theme.mediaWidth.upToSmall`
     width: 48%;
   `};
@@ -135,11 +138,16 @@ export default function Pool() {
           <CardSection>
             <AutoColumn gap="md">
               <RowBetween>
-                <TYPE.white fontWeight={600}>Liquidity provider rewards</TYPE.white>
+                <TYPE.white fontWeight={600}>
+                  <Trans>Liquidity provider rewards</Trans>
+                </TYPE.white>
               </RowBetween>
               <RowBetween>
                 <TYPE.white fontSize={14}>
-                  {`Liquidity providers earn a 0.3% fee on all trades proportional to their share of the pool. Fees are added to the pool, accrue in real time and can be claimed by withdrawing your liquidity.`}
+                  <Trans>
+                    Liquidity providers earn a 0.3% fee on all trades proportional to their share of the pool. Fees are
+                    added to the pool, accrue in real time and can be claimed by withdrawing your liquidity.
+                  </Trans>
                 </TYPE.white>
               </RowBetween>
               <ExternalLink
@@ -147,7 +155,9 @@ export default function Pool() {
                 target="_blank"
                 href="https://uniswap.org/docs/v2/core-concepts/pools/"
               >
-                <TYPE.white fontSize={14}>Read more about providing liquidity</TYPE.white>
+                <TYPE.white fontSize={14}>
+                  <Trans>Read more about providing liquidity</Trans>
+                </TYPE.white>
               </ExternalLink>
             </AutoColumn>
           </CardSection>
@@ -160,22 +170,21 @@ export default function Pool() {
             <TitleRow style={{ marginTop: '1rem' }} padding={'0'}>
               <HideSmall>
                 <TYPE.mediumHeader style={{ marginTop: '0.5rem', justifySelf: 'flex-start' }}>
-                  Your V2 liquidity
+                  <Trans>Your V2 liquidity</Trans>
                 </TYPE.mediumHeader>
               </HideSmall>
               <ButtonRow>
                 <ResponsiveButtonSecondary as={Link} padding="6px 8px" to="/add/v2/ETH">
-                  Create a pair
+                  <Trans>Create a pair</Trans>
                 </ResponsiveButtonSecondary>
-                <ResponsiveButtonPrimary
-                  id="join-pool-button"
-                  as={Link}
-                  padding="6px 8px"
-                  borderRadius="12px"
-                  to="/add/v2/ETH"
-                >
+                <ResponsiveButtonPrimary id="find-pool-button" as={Link} to="/pool/v2/find" padding="6px 8px">
                   <Text fontWeight={500} fontSize={16}>
-                    Add V2 Liquidity
+                    <Trans>Import Pool</Trans>
+                  </Text>
+                </ResponsiveButtonPrimary>
+                <ResponsiveButtonPrimary id="join-pool-button" as={Link} to="/add/v2/ETH" padding="6px 8px">
+                  <Text fontWeight={500} fontSize={16}>
+                    <Trans>Add V2 Liquidity</Trans>
                   </Text>
                 </ResponsiveButtonPrimary>
               </ButtonRow>
@@ -184,23 +193,27 @@ export default function Pool() {
             {!account ? (
               <Card padding="40px">
                 <TYPE.body color={theme.text3} textAlign="center">
-                  Connect to a wallet to view your liquidity.
+                  <Trans>Connect to a wallet to view your liquidity.</Trans>
                 </TYPE.body>
               </Card>
             ) : v2IsLoading ? (
               <EmptyProposals>
                 <TYPE.body color={theme.text3} textAlign="center">
-                  <Dots>Loading</Dots>
+                  <Dots>
+                    <Trans>Loading</Trans>
+                  </Dots>
                 </TYPE.body>
               </EmptyProposals>
             ) : allV2PairsWithLiquidity?.length > 0 || stakingPairs?.length > 0 ? (
               <>
                 <ButtonSecondary>
                   <RowBetween>
-                    <ExternalLink href={'https://v2.info.uniswap.org/account/' + account}>
-                      Account analytics and accrued fees
-                    </ExternalLink>
-                    <span> ↗</span>
+                    <Trans>
+                      <ExternalLink href={'https://v2.info.uniswap.org/account/' + account}>
+                        Account analytics and accrued fees
+                      </ExternalLink>
+                      <span> ↗ </span>
+                    </Trans>
                   </RowBetween>
                 </ButtonSecondary>
                 {v2PairsWithoutStakedAmount.map((v2Pair) => (
@@ -230,20 +243,21 @@ export default function Pool() {
                     }}
                   >
                     <ChevronsRight size={16} style={{ marginRight: '8px' }} />
-                    Migrate Liquidity to V3
+                    <Trans>Migrate Liquidity to V3</Trans>
                   </ButtonOutlined>
                 </RowFixed>
               </>
             ) : (
               <EmptyProposals>
                 <TYPE.body color={theme.text3} textAlign="center">
-                  No liquidity found.
+                  <Trans>No liquidity found.</Trans>
                 </TYPE.body>
               </EmptyProposals>
             )}
           </AutoColumn>
         </AutoColumn>
       </PageWrapper>
+      <SwitchLocaleLink />
     </>
   )
 }

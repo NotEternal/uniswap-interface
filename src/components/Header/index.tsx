@@ -1,32 +1,28 @@
+import { Trans } from '@lingui/macro'
 import useScrollPosition from '@react-hook/window-scroll'
-import React, { useState } from 'react'
-import { Text } from 'rebass'
-import { NavLink } from 'react-router-dom'
 import { darken } from 'polished'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import { Moon, Sun } from 'react-feather'
+import { NavLink } from 'react-router-dom'
+import { Text } from 'rebass'
+import { useShowClaimPopup, useToggleSelfClaimModal } from 'state/application/hooks'
+import { useUserHasAvailableClaim } from 'state/claim/hooks'
+import { useUserHasSubmittedClaim } from 'state/transactions/hooks'
+import { useDarkModeManager } from 'state/user/hooks'
+import { useETHBalances } from 'state/wallet/hooks'
 import styled from 'styled-components/macro'
-
 import Logo from '../../assets/svg/logo.svg'
 import LogoDark from '../../assets/svg/logo_white.svg'
-
 import { useActiveWeb3React } from '../../hooks/web3'
-import { useDarkModeManager } from '../../state/user/hooks'
-import { useETHBalances } from '../../state/wallet/hooks'
-import { CardNoise } from '../earn/styled'
-import { TYPE, ExternalLink } from '../../theme'
-
-import { YellowCard } from '../Card'
-import Menu from '../Menu'
-
-import Row, { RowFixed } from '../Row'
-import Web3Status from '../Web3Status'
+import { ExternalLink, TYPE } from '../../theme'
 import ClaimModal from '../claim/ClaimModal'
-import { useToggleSelfClaimModal, useShowClaimPopup } from '../../state/application/hooks'
-import { useUserHasAvailableClaim } from '../../state/claim/hooks'
-import { useUserHasSubmittedClaim } from '../../state/transactions/hooks'
-import { Dots } from '../swap/styleds'
+import { CardNoise } from '../earn/styled'
+import Menu from '../Menu'
 import Modal from '../Modal'
+import Row, { RowFixed } from '../Row'
+import { Dots } from '../swap/styleds'
+import Web3Status from '../Web3Status'
+import NetworkCard from './NetworkCard'
 import UniBalanceContent from './UniBalanceContent'
 
 const HeaderFrame = styled.div<{ showBackground: boolean }>`
@@ -52,8 +48,7 @@ const HeaderFrame = styled.div<{ showBackground: boolean }>`
 
   ${({ theme }) => theme.mediaWidth.upToMedium`
     padding:  1rem;
-    grid-template-columns: 120px 1fr;
-
+    grid-template-columns: auto 1fr;
   `};
 
   ${({ theme }) => theme.mediaWidth.upToExtraSmall`
@@ -170,19 +165,6 @@ const HideSmall = styled.span`
   `};
 `
 
-const NetworkCard = styled(YellowCard)`
-  border-radius: 12px;
-  padding: 8px 12px;
-  ${({ theme }) => theme.mediaWidth.upToSmall`
-    margin: 0;
-    margin-right: 0.5rem;
-    width: initial;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
-  `};
-`
-
 const BalanceText = styled(Text)`
   ${({ theme }) => theme.mediaWidth.upToExtraSmall`
     display: none;
@@ -226,6 +208,7 @@ const StyledNavLink = styled(NavLink).attrs({
   width: fit-content;
   font-weight: 500;
   padding: 8px 12px;
+  word-break: break-word;
 
   &.${activeClassName} {
     border-radius: 12px;
@@ -264,6 +247,7 @@ const StyledExternalLink = styled(ExternalLink).attrs({
   :hover,
   :focus {
     color: ${({ theme }) => darken(0.1, theme.text1)};
+    text-decoration: none;
   }
 
   ${({ theme }) => theme.mediaWidth.upToExtraSmall`
@@ -300,16 +284,8 @@ export const StyledMenuButton = styled.button`
   }
 `
 
-const NETWORK_LABELS: { [chainId: number]: string } = {
-  [4]: 'Rinkeby',
-  [3]: 'Ropsten',
-  [5]: 'Görli',
-  [42]: 'Kovan',
-}
-
 export default function Header() {
-  const { account, chainId } = useActiveWeb3React()
-  const { t } = useTranslation()
+  const { account } = useActiveWeb3React()
 
   const userEthBalance = useETHBalances(account ? [account] : [])?.[account ?? '']
   // const [isDark] = useDarkModeManager()
@@ -341,7 +317,7 @@ export default function Header() {
       </HeaderRow>
       <HeaderLinks>
         <StyledNavLink id={`swap-nav-link`} to={'/swap'}>
-          {t('swap')}
+          <Trans>Swap</Trans>
         </StyledNavLink>
         <StyledNavLink
           id={`pool-nav-link`}
@@ -354,27 +330,32 @@ export default function Header() {
             pathname.startsWith('/find')
           }
         >
-          {t('pool')}
+          <Trans>Pool</Trans>
         </StyledNavLink>
         <StyledNavLink id={`stake-nav-link`} to={'/vote'}>
-          Vote
+          <Trans>Vote</Trans>
         </StyledNavLink>
         <StyledExternalLink id={`stake-nav-link`} href={'https://info.uniswap.org'}>
-          Charts <span style={{ fontSize: '11px', textDecoration: 'none !important' }}>↗</span>
+          <Trans>Charts</Trans>
+          <sup>↗</sup>
         </StyledExternalLink>
       </HeaderLinks>
       <HeaderControls>
         <HeaderElement>
           <HideSmall>
-            {chainId && NETWORK_LABELS[chainId] && (
-              <NetworkCard title={NETWORK_LABELS[chainId]}>{NETWORK_LABELS[chainId]}</NetworkCard>
-            )}
+            <NetworkCard />
           </HideSmall>
           {availableClaim && !showClaimPopup && (
             <UNIWrapper onClick={toggleClaimModal}>
               <UNIAmount active={!!account && !availableClaim} style={{ pointerEvents: 'auto' }}>
                 <TYPE.white padding="0 2px">
-                  {claimTxn && !claimTxn?.receipt ? <Dots>Claiming UNI</Dots> : 'Claim UNI'}
+                  {claimTxn && !claimTxn?.receipt ? (
+                    <Dots>
+                      <Trans>Claiming UNI</Trans>
+                    </Dots>
+                  ) : (
+                    <Trans>Claim UNI</Trans>
+                  )}
                 </TYPE.white>
               </UNIAmount>
               <CardNoise />
@@ -383,7 +364,7 @@ export default function Header() {
           <AccountElement active={!!account} style={{ pointerEvents: 'auto' }}>
             {account && userEthBalance ? (
               <BalanceText style={{ flexShrink: 0 }} pl="0.75rem" pr="0.5rem" fontWeight={500}>
-                {userEthBalance?.toSignificant(4)} ETH
+                <Trans>{userEthBalance?.toSignificant(4)} ETH</Trans>
               </BalanceText>
             ) : null}
             <Web3Status />

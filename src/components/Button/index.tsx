@@ -1,18 +1,21 @@
-import React from 'react'
 import styled from 'styled-components/macro'
 import { darken } from 'polished'
 
 import { RowBetween } from '../Row'
 import { ChevronDown, Check } from 'react-feather'
-import { Button as RebassButton, ButtonProps } from 'rebass/styled-components'
+import { Button as RebassButton, ButtonProps as ButtonPropsOriginal } from 'rebass/styled-components'
 import useTheme from 'hooks/useTheme'
 
-const Base = styled(RebassButton)<{
-  padding?: string
-  width?: string
-  borderRadius?: string
-  altDisabledStyle?: boolean
-}>`
+type ButtonProps = Omit<ButtonPropsOriginal, 'css'>
+
+const Base = styled(RebassButton)<
+  {
+    padding?: string
+    width?: string
+    borderRadius?: string
+    altDisabledStyle?: boolean
+  } & ButtonProps
+>`
   padding: ${({ padding }) => (padding ? padding : '16px')};
   width: ${({ width }) => (width ? width : '100%')};
   font-weight: 500;
@@ -68,14 +71,12 @@ export const ButtonPrimary = styled(Base)`
   }
   &:disabled {
     background-color: ${({ theme, altDisabledStyle, disabled }) =>
-      altDisabledStyle ? (disabled ? theme.primary1 : theme.primary1) : theme.primary1};
-    color: white;
+      altDisabledStyle ? (disabled ? theme.primary1 : theme.bg2) : theme.bg2};
+    color: ${({ theme }) => theme.text2};
     cursor: auto;
     box-shadow: none;
     border: 1px solid transparent;
     outline: none;
-    opacity: 0.4;
-    opacity: ${({ altDisabledStyle }) => (altDisabledStyle ? '0.5' : '0.4')};
   }
 `
 
