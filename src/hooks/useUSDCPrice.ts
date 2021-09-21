@@ -1,9 +1,9 @@
 import { Currency, CurrencyAmount, Price, Token } from '@uniswap/sdk-core'
 import { useMemo } from 'react'
 import { SupportedChainId } from '../constants/chains'
-import { USDC, USDC_ARBITRUM } from '../constants/tokens'
+import { DAI_OPTIMISM, USDC, USDC_ARBITRUM } from '../constants/tokens'
 import { useV2TradeExactOut } from './useV2Trade'
-import { useBestV3TradeExactOut } from './useBestV3Trade'
+import { useClientSideV3TradeExactOut } from './useClientSideV3Trade'
 import { useActiveWeb3React } from './web3'
 
 // Stablecoin amounts used when calculating spot price for a given currency.
@@ -11,6 +11,7 @@ import { useActiveWeb3React } from './web3'
 const STABLECOIN_AMOUNT_OUT: { [chainId: number]: CurrencyAmount<Token> } = {
   [SupportedChainId.MAINNET]: CurrencyAmount.fromRawAmount(USDC, 100_000e6),
   [SupportedChainId.ARBITRUM_ONE]: CurrencyAmount.fromRawAmount(USDC_ARBITRUM, 10_000e6),
+  [SupportedChainId.OPTIMISM]: CurrencyAmount.fromRawAmount(DAI_OPTIMISM, 10_000e18),
 }
 
 /**
@@ -26,7 +27,7 @@ export default function useUSDCPrice(currency?: Currency): Price<Currency, Token
   const v2USDCTrade = useV2TradeExactOut(currency, amountOut, {
     maxHops: 2,
   })
-  const v3USDCTrade = useBestV3TradeExactOut(currency, amountOut)
+  const v3USDCTrade = useClientSideV3TradeExactOut(currency, amountOut)
 
   return useMemo(() => {
     if (!currency || !stablecoin) {

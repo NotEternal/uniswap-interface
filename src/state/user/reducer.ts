@@ -1,5 +1,6 @@
-import { DEFAULT_DEADLINE_FROM_NOW } from '../../constants/misc'
 import { createReducer } from '@reduxjs/toolkit'
+import { SupportedLocale } from 'constants/locales'
+import { DEFAULT_DEADLINE_FROM_NOW } from '../../constants/misc'
 import { updateVersion } from '../global/actions'
 import {
   addSerializedPair,
@@ -8,18 +9,16 @@ import {
   removeSerializedToken,
   SerializedPair,
   SerializedToken,
+  updateArbitrumAlphaAcknowledged,
+  updateHideClosedPositions,
   updateMatchesDarkMode,
   updateUserDarkMode,
-  updateUserExpertMode,
-  updateUserSlippageTolerance,
   updateUserDeadline,
-  toggleURLWarning,
-  updateUserSingleHopOnly,
-  updateHideClosedPositions,
+  updateUserExpertMode,
   updateUserLocale,
-  updateArbitrumAlphaAcknowledged,
+  updateUserClientSideRouter,
+  updateUserSlippageTolerance,
 } from './actions'
-import { SupportedLocale } from 'constants/locales'
 
 const currentTimestamp = () => new Date().getTime()
 
@@ -36,7 +35,7 @@ export interface UserState {
 
   userExpertMode: boolean
 
-  userSingleHopOnly: boolean // only allow swaps on direct pairs
+  userClientSideRouter: boolean // whether routes should be calculated with the client side router only
 
   // hides closed (inactive) positions across the app
   userHideClosedPositions: boolean
@@ -75,7 +74,7 @@ export const initialState: UserState = {
   matchesDarkMode: false,
   userExpertMode: false,
   userLocale: null,
-  userSingleHopOnly: false,
+  userClientSideRouter: false,
   userHideClosedPositions: false,
   userSlippageTolerance: 'auto',
   userSlippageToleranceHasBeenMigratedToAuto: true,
@@ -148,8 +147,8 @@ export default createReducer(initialState, (builder) =>
       state.userDeadline = action.payload.userDeadline
       state.timestamp = currentTimestamp()
     })
-    .addCase(updateUserSingleHopOnly, (state, action) => {
-      state.userSingleHopOnly = action.payload.userSingleHopOnly
+    .addCase(updateUserClientSideRouter, (state, action) => {
+      state.userClientSideRouter = action.payload.userClientSideRouter
     })
     .addCase(updateHideClosedPositions, (state, action) => {
       state.userHideClosedPositions = action.payload.userHideClosedPositions
@@ -188,8 +187,5 @@ export default createReducer(initialState, (builder) =>
         delete state.pairs[chainId][pairKey(tokenBAddress, tokenAAddress)]
       }
       state.timestamp = currentTimestamp()
-    })
-    .addCase(toggleURLWarning, (state) => {
-      state.URLWarningVisible = !state.URLWarningVisible
     })
 )

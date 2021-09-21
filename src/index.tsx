@@ -1,5 +1,6 @@
 import 'inter-ui'
 import '@reach/dialog/styles.css'
+import 'polyfills'
 import { createWeb3ReactRoot, Web3ReactProvider } from '@web3-react/core'
 import { StrictMode } from 'react'
 import { isMobile } from 'react-device-detect'
@@ -16,6 +17,7 @@ import * as serviceWorkerRegistration from './serviceWorkerRegistration'
 import ApplicationUpdater from './state/application/updater'
 import ListsUpdater from './state/lists/updater'
 import MulticallUpdater from './state/multicall/updater'
+import LogsUpdater from './state/logs/updater'
 import TransactionUpdater from './state/transactions/updater'
 import UserUpdater from './state/user/updater'
 import ThemeProvider, { ThemedGlobalStyle } from './theme'
@@ -57,6 +59,7 @@ function Updaters() {
       <ApplicationUpdater />
       <TransactionUpdater />
       <MulticallUpdater />
+      <LogsUpdater />
     </>
   )
 }
@@ -84,4 +87,6 @@ ReactDOM.render(
   document.getElementById('root')
 )
 
-serviceWorkerRegistration.unregister()
+if (process.env.REACT_APP_SERVICE_WORKER !== 'false') {
+  serviceWorkerRegistration.register()
+}

@@ -1,20 +1,77 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useAppDispatch } from 'state/hooks'
-import useDebounce from '../../hooks/useDebounce'
-import useIsWindowVisible from '../../hooks/useIsWindowVisible'
-import { useActiveWeb3React } from '../../hooks/web3'
-import { updateBlockNumber } from './actions'
+import { CHAIN_INFO } from 'constants/chains'
+import useDebounce from 'hooks/useDebounce'
+import useIsWindowVisible from 'hooks/useIsWindowVisible'
+import { useActiveWeb3React } from 'hooks/web3'
+import ms from 'ms.macro'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, CHAIN_TAG } from 'state/data/enhanced'
+import { useAppDispatch, useAppSelector } from 'state/hooks'
+import { supportedChainId } from 'utils/supportedChainId'
+import { setChainConnectivityWarning, updateBlockNumber, updateChainId } from './actions'
+import { useBlockNumber } from './hooks'
+
+function useQueryCacheInvalidator() {
+  const dispatch = useAppDispatch()
+
+  // subscribe to `chainId` changes in the redux store rather than Web3
+  // this will ensure that when `invalidateTags` is called, the latest
+  // `chainId` is available in redux to build the subgraph url
+  const chainId = useAppSelector((state) => state.application.chainId)
+
+  useEffect(() => {
+    dispatch(api.util.invalidateTags([CHAIN_TAG]))
+  }, [chainId, dispatch])
+}
+
+const NETWORK_HEALTH_CHECK_MS = ms`15s`
+const DEFAULT_MS_BEFORE_WARNING = ms`10m`
+
+function useBlockWarningTimer() {
+  const { chainId } = useActiveWeb3React()
+  const dispatch = useAppDispatch()
+  const chainConnectivityWarningActive = useAppSelector((state) => state.application.chainConnectivityWarning)
+  const timeout = useRef<NodeJS.Timeout>()
+  const isWindowVisible = useIsWindowVisible()
+  const [msSinceLastBlock, setMsSinceLastBlock] = useState(0)
+  const currentBlock = useBlockNumber()
+
+  useEffect(() => {
+    setMsSinceLastBlock(0)
+  }, [currentBlock])
+
+  useEffect(() => {
+    const waitMsBeforeWarning =
+      (chainId ? CHAIN_INFO[chainId]?.blockWaitMsBeforeWarning : DEFAULT_MS_BEFORE_WARNING) ?? DEFAULT_MS_BEFORE_WARNING
+
+    timeout.current = setTimeout(() => {
+      setMsSinceLastBlock(NETWORK_HEALTH_CHECK_MS + msSinceLastBlock)
+      if (msSinceLastBlock > waitMsBeforeWarning && isWindowVisible) {
+        dispatch(setChainConnectivityWarning({ warn: true }))
+      } else if (chainConnectivityWarningActive) {
+        dispatch(setChainConnectivityWarning({ warn: false }))
+      }
+    }, NETWORK_HEALTH_CHECK_MS)
+
+    return function cleanup() {
+      if (timeout.current) {
+        clearTimeout(timeout.current)
+      }
+    }
+  }, [chainId, chainConnectivityWarningActive, dispatch, isWindowVisible, msSinceLastBlock, setMsSinceLastBlock])
+}
 
 export default function Updater(): null {
   const { library, chainId } = useActiveWeb3React()
   const dispatch = useAppDispatch()
-
   const windowVisible = useIsWindowVisible()
 
   const [state, setState] = useState<{ chainId: number | undefined; blockNumber: number | null }>({
     chainId,
     blockNumber: null,
   })
+
+  useBlockWarningTimer()
+  useQueryCacheInvalidator()
 
   const blockNumberCallback = useCallback(
     (blockNumber: number) => {
@@ -52,6 +109,12 @@ export default function Updater(): null {
     if (!debouncedState.chainId || !debouncedState.blockNumber || !windowVisible) return
     dispatch(updateBlockNumber({ chainId: debouncedState.chainId, blockNumber: debouncedState.blockNumber }))
   }, [windowVisible, dispatch, debouncedState.blockNumber, debouncedState.chainId])
+
+  useEffect(() => {
+    dispatch(
+      updateChainId({ chainId: debouncedState.chainId ? supportedChainId(debouncedState.chainId) ?? null : null })
+    )
+  }, [dispatch, debouncedState.chainId])
 
   return null
 }
